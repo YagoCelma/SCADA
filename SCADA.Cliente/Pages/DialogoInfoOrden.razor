@@ -1,0 +1,231 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@inject ImputacionService ImputacionService
+@inject DialogService DialogService
+
+<div class="fuxa-info-container">
+    @if (OrdenInfo == null)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        @* cabecera *@
+        <RadzenCard class="rz-mb-4 rz-border-radius-2" Style="background: #1A2E3F; color: white;">
+            <RadzenRow AlignItems="AlignItems.Center">
+                <RadzenColumn Size="12" SizeMD="8">
+                    <RadzenStack Gap="0">
+                        <RadzenText TextStyle="TextStyle.Overline" Style="color: #7BB3D4; font-weight: bold;">FICHA TÉCNICA DE ORDEN</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H4" Style="margin: 0; font-weight: 800; color:white">@OrdenInfo.CodigoOrden</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Style="color: #E2E8F0;">@OrdenInfo.Producto</RadzenText>
+                    </RadzenStack>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="4" Style="text-align: right;">
+                    <RadzenBadge BadgeStyle="@(OrdenInfo.Estado == "En curso" ? BadgeStyle.Success :
+                                                                                                  OrdenInfo.Estado == "Finalizado" ? BadgeStyle.Danger : BadgeStyle.Info)"
+                                 Text="@OrdenInfo.Estado.ToUpper()"
+                                 Style="padding: 10px 20px; font-size: 1rem;" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+
+        @* razdenTable *@
+        <RadzenTabs RenderMode="TabRenderMode.Client">
+            <Tabs>
+                @* pestaña operaciones *@
+                <RadzenTabsItem Text="Hoja de Ruta" Icon="assignment">
+                    <RadzenDataGrid Data="@listaOperaciones" TItem="OperacionesOrden" class="rz-mt-2" AllowPaging="true" PageSize="6">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="OperacionesOrden" Property="Preferencia" Title="Preferencia" Width="100px" TextAlign="TextAlign.Center" />
+                            
+                            <RadzenDataGridColumn TItem="OperacionesOrden" Property="CodigoOperacion" Title="Operación">
+                                <FooterTemplate>
+                                    <div style="text-align: right; font-weight: bold; color: #1A2E3F;">TOTALES:</div>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="OperacionesOrden" Property="Estado" Title="Estado" Width="130px" TextAlign="TextAlign.Center">
+                                <Template Context="op">
+                                    <RadzenBadge BadgeStyle="@(op.Estado == "En curso" ? BadgeStyle.Success : op.Estado == "Finalizado" ? BadgeStyle.Danger : BadgeStyle.Info)"
+                                                 Text="@op.Estado" IsPill="true" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            
+                            @* tiempo teorico *@
+                            <RadzenDataGridColumn TItem="OperacionesOrden" Title="Tiempo teórico" Width="130px" TextAlign="TextAlign.Center">
+                                <Template Context="op">
+                                    @if (op.DetalleOperacion != null)
+                                    {
+                                        <span style="font-weight: bold; color: #475569;">
+                                            @{
+                                                var tiempoTeorico = TimeSpan.FromMinutes(op.DetalleOperacion.TiempoTeorico);
+                                            }
+                                            @((int)tiempoTeorico.TotalHours)h @tiempoTeorico.Minutes.ToString("D2")m
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #A0AEC0;">---</span>
+                                    }
+                                </Template>
+                                <FooterTemplate>
+                                    <span style="font-weight: bold; color: #475569;">
+                                        @((int)tiempoTotalTeorico.TotalHours)h @tiempoTotalTeorico.Minutes.ToString("D2")m
+                                    </span>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+
+                            @* tiempo real *@
+                            <RadzenDataGridColumn TItem="OperacionesOrden" Title="Tiempo real" Width="140px" TextAlign="TextAlign.Center">
+                                <Template Context="op">
+                                    @{
+                                        double horasFila = 0;
+                                        if (op.Imputaciones != null)
+                                        {
+                                            horasFila += op.Imputaciones.Where(i => i.FechaFin != null).Sum(i => (double)i.Horas);
+                                            var activo = op.Imputaciones.FirstOrDefault(i => i.FechaFin == null);
+                                            if (activo != null && activo.FechaInicio.HasValue)
+                                                horasFila += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
+                                        }
+                                        var tr = TimeSpan.FromHours(horasFila);
+                                    }
+                                    @if (horasFila > 0)
+                                    {
+                                        <span style="font-weight: bold; color: @(op.Estado == "En curso" ? "#00CC58" : "#1F4E79");">
+                                            @((int)tr.TotalHours)h @tr.Minutes.ToString("D2")m
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #A0AEC0;">---</span>
+                                    }
+                                </Template>
+                                <FooterTemplate>
+                                    <span style="font-weight: bold; color: #1F4E79; font-size: 1.1rem;">
+                                        @((int)tiempoTotalReal.TotalHours)h @tiempoTotalReal.Minutes.ToString("D2")m
+                                    </span>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                @* pestaña materiales *@
+                <RadzenTabsItem Text="Materiales consumidos" Icon="inventory_2">
+                    <RadzenDataGrid Data="@listaMateriales" TItem="ImputacionMaterial" class="rz-mt-2" AllowPaging="true" PageSize="6">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.Nombre" Title="Material" />
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="100px" TextAlign="TextAlign.Center">
+                                <Template Context="m">
+                                    <span style="font-weight: bold;">@m.Cantidad</span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Registrado por">
+                                <Template Context="e">
+                                    <span>@e.Empleado.Nombre @e.Empleado.Apellidos</span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="FechaRegistro" Title="Fecha" FormatString="{0:dd/MM HH:mm}" Width="130px" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                @* pestaña tiempos totales *@
+                @* <RadzenTabsItem Text="Operarios" Icon="timer">
+                    <RadzenDataGrid Data="@listaOperarios" TItem="ImputacionOperario" class="rz-mt-2" AllowPaging="true" PageSize="6">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ImputacionOperario" Title="Operario"/>
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem> *@
+            </Tabs>
+        </RadzenTabs>
+    }
+</div>
+
+<div class="rz-mt-6" style="text-align: right;">
+    <RadzenButton Text="Cerrar Detalles" Click="() => DialogService.Close()" ButtonStyle="ButtonStyle.Light" />
+</div>
+
+<style>
+    .fuxa-info-container {
+        padding: 10px;
+    }
+
+    .rz-tabview-panels {
+        border: 1px solid #E2E8F0 !important;
+        border-top: none !important;
+    }
+</style>
+
+@code {
+    [Parameter] public Orden OrdenInfo { get; set; }
+
+    private List<OperacionesOrden> listaOperaciones = new();
+    private List<ImputacionMaterial> listaMateriales = new();
+    private List<ImputacionOperario> listaOperarios = new();
+
+    private int porcentajeCompletado = 0;
+    private TimeSpan tiempoTotalTeorico = TimeSpan.Zero;
+    private TimeSpan tiempoTotalReal = TimeSpan.Zero;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (OrdenInfo != null)
+        {
+            await CargarDetalles();
+        }
+    }
+
+    private async Task CargarDetalles()
+    {
+        listaOperaciones = await ImputacionService.ObtenerOperacionesOrdenAsync(OrdenInfo.Id);
+
+        listaMateriales = await ImputacionService.ObtenerMaterialesPorOrdenAsync(OrdenInfo.Id);
+
+        //listaOperarios = await ImputacionService.ObtenerOperariosPorOrdenAsync(OrdenInfo.Id);
+
+        CalcularTiemposTotales();
+
+        if (listaOperaciones.Any())
+        {
+            TimeSpan totalReales = tiempoTotalReal;
+            TimeSpan totalTeorico = tiempoTotalTeorico;
+            porcentajeCompletado = (int)((TimeSpan)totalReales / totalTeorico * 100);
+        }
+    }
+
+    private void CalcularTiemposTotales()
+    {
+        double minutosTeoricosTotales = listaOperaciones
+        .Where(op => op.DetalleOperacion != null)
+        .Sum(op => op.DetalleOperacion.TiempoTeorico);
+
+        tiempoTotalTeorico = TimeSpan.FromMinutes(minutosTeoricosTotales);
+
+        double horasRealesTotales = 0;
+
+        foreach (var operacion in listaOperaciones)
+        {
+            if (operacion.Imputaciones != null && operacion.Imputaciones.Any())
+            {
+                horasRealesTotales += operacion.Imputaciones
+                .Where(i => i.FechaFin != null && i.FechaInicio != null)
+                .Sum(i => (i.FechaFin.Value - i.FechaInicio.Value).TotalHours);
+
+                var tramosActivos = operacion.Imputaciones.Where(i => i.FechaFin == null);
+
+                foreach (var activo in tramosActivos)
+                {
+                    if (activo.FechaInicio.HasValue)
+                    {
+                        horasRealesTotales += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
+                    }
+                }
+            }
+        }
+        tiempoTotalReal = TimeSpan.FromHours(horasRealesTotales);
+    }
+}

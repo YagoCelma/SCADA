@@ -1,0 +1,108 @@
+﻿@page "/dialogo-nueva-orden"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@inject Radzen.DialogService DialogService
+@inject ImputacionService ImputacionService
+@inject NotificationService NotificationService
+
+
+<RadzenTemplateForm TItem="Orden" Data="@nuevaOrden" Submit="@GuardarOrden">
+    <div class="container-fluid">
+        
+        <div class="row p-2 bg-light border-bottom rz-mb-4">
+            <div class="col-md-6">
+                <RadzenText TextStyle="TextStyle.Caption">Sección</RadzenText>
+                <RadzenTextBox Value="@MaquinaCreacion.Seccion.Nombre" Style="width: 100%;" Disabled="true" />
+            </div>
+            <div class="col-md-6">
+                <RadzenText TextStyle="TextStyle.Caption">Máquina</RadzenText>
+                <RadzenTextBox Value="@MaquinaCreacion.Nombre" Style="width: 100%;" Disabled="true" />
+            </div>
+        </div>
+
+        <div class="row p-2">
+            <div class="col-md-6">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Código de Orden</RadzenText>
+                <RadzenTextBox @bind-Value="nuevaOrden.CodigoOrden" Style="width: 100%;" Name="CodigoOrden" Disabled />
+                <RadzenRequiredValidator Component="CodigoOrden" Text="El código es obligatorio" Popup="true" />
+            </div>
+        </div>
+
+        <div class="row p-2">
+            <div class="col-md-4">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Estado</RadzenText>
+                <RadzenDropDown @bind-Value="nuevaOrden.Estado"
+                                Data="@(new[] { "Pendiente", "Activa", "Incidencia", "Cerrada" })"
+                                Style="width: 100%;" />
+            </div>
+        </div>
+
+        <div class="row p-2">
+            <div class="col-md-6">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Fecha Inicio</RadzenText>
+                <RadzenDatePicker @bind-Value="nuevaOrden.FechaInicio" Style="width: 100%;" ShowTime="true" DateFormat="dd/MM/yyyy HH:mm" />
+            </div>
+            <div class="col-md-6">
+                <RadzenText TextStyle="TextStyle.Subtitle2">Fecha Fin</RadzenText>
+                <RadzenDatePicker @bind-Value="nuevaOrden.FechaFin" Style="width: 100%;" ShowTime="true" DateFormat="dd/MM/yyyy HH:mm" AllowClear="true" />
+            </div>
+        </div>
+
+        <div class="row p-3 text-right">
+            <div class="col-md-12">
+                <RadzenButton Text="Cancelar" Click="@((args) => DialogService.Close(false))" ButtonStyle="ButtonStyle.Light" Class="rz-mr-2" />
+                <RadzenButton Text="Crear Orden" ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Icon="save" />
+            </div>
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    // Parámetro que recibimos de la pantalla principal
+    [Parameter] public Maquina MaquinaCreacion { get; set; }
+
+    private Orden nuevaOrden = new Orden();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (MaquinaCreacion != null)
+        {
+            nuevaOrden.FechaInicio = DateTime.Now;
+            nuevaOrden.Estado = "Activa";
+
+            // Generamos el código automático llamando al servicio
+            nuevaOrden.CodigoOrden = await ImputacionService.GenerarProximoCodigoOrdenAsync();
+        }
+    }
+
+    private async Task GuardarOrden()
+    {
+        // intentamos guardar usando el servicio que creamos antes
+        var resultado = await ImputacionService.CrearNuevaOrdenAsync(nuevaOrden);
+
+        if (resultado)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "¡Éxito!",
+                Detail = "La orden se ha creado correctamente",
+                Duration = 4000
+            });
+
+            DialogService.Close(true);
+        }
+        else
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = "No se pudo guardar la orden. Revisa los datos.",
+                Duration = 4000
+            });
+        }
+    }
+}

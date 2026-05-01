@@ -1,0 +1,67 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@inject ImputacionService ImputacionService
+@inject Radzen.DialogService DialogService
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 rz-p-4">
+            <RadzenStack Gap="1.5rem">
+                
+                <RadzenStack Gap="0.4rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Style="font-weight: bold;">1. SELECCIONAR ORDEN MADRE</RadzenText>
+                    <RadzenDropDown TValue="int"
+                                    Data="@listaOrdenesMadre"
+                                    TextProperty="CodigoOrden"
+                                    ValueProperty="Id"
+                                    @bind-Value="idOrdenSeleccionada"
+                                    Style="width: 100%; max-width: 350px;"
+                                    Placeholder="Elija la orden..." />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.4rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Style="font-weight: bold;">2. CICLOS OBJETIVO (META)</RadzenText>
+                    <RadzenNumeric TValue="int" @bind-Value="ciclos" Style="width: 100%; max-width: 350px;" />
+                </RadzenStack>
+
+                <div class="rz-mt-4">
+                    <RadzenButton Click="@CrearOperacionClick"
+                                  Text="ASIGNAR TRABAJO"
+                                  Icon="assignment_turned_in"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Size="ButtonSize.Large"
+                                  Style="width: 100%; max-width: 350px; font-weight: bold;"
+                                  Disabled="@(idOrdenSeleccionada == 0 || ciclos <= 0)" />
+                </div>
+
+            </RadzenStack>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int MaquinaId { get; set; }
+    
+    List<Orden> listaOrdenesMadre;
+    int idOrdenSeleccionada;
+    int ciclos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargamos las órdenes que estén activas
+        listaOrdenesMadre = await ImputacionService.ObtenerOrdenesActivasAsync();
+    }
+
+    async Task CrearOperacionClick()
+    {
+        // Llamamos al servicio para que cree la fila en 'OperacionesOrden'
+        var exito = await ImputacionService.AsignarOrdenAMaquinaAsync(idOrdenSeleccionada, MaquinaId, ciclos);
+        
+        if (exito)
+        {
+            DialogService.Close(true);
+        }
+    }
+}

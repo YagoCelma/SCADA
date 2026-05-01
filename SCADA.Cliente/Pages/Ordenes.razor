@@ -1,0 +1,333 @@
+﻿@page "/ordenes"
+@using SCADA.Modelos
+@using SCADA.Cliente.Services
+@using Radzen
+@using Radzen.Blazor
+
+@inject ImputacionService ImputacionService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<div class="fuxa-enterprise-container">
+    <RadzenStack Gap="1.5rem">
+
+        @* cabecera *@
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenStack Gap="0">
+                    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="ent-title">
+                        Gestión de Órdenes
+                    </RadzenText>
+                    <div class="ent-title-underline"></div>
+                </RadzenStack>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="1rem">
+                    <RadzenButton Click="LimpiarBusqueda"
+                                  Icon="filter_alt_off"
+                                  Text="LIMPIAR FILTROS"
+                                  ButtonStyle="ButtonStyle.Light"
+                                  class="ent-btn-outline" />
+
+                    <RadzenButton Click="@AbrirDialogoNuevaOrden"
+                                  Text="NUEVA ORDEN"
+                                  Icon="add_box"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  class="ent-btn-solid" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* tabla *@
+        <div class="ent-grid-wrapper">
+            <RadzenDataGrid AllowFiltering="true" AllowPaging="true" PageSize="10" AllowSorting="true"
+                            Data="@escaparateOrdenes" TItem="Orden" EmptyText="No hay órdenes creadas."
+                            FilterMode="FilterMode.Simple" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                            class="ent-datagrid">
+                <Columns>
+                    <RadzenDataGridColumn TItem="Orden" Property="CodigoOrden" Title="CÓDIGO ORDEN" Width="160px">
+                        <FilterTemplate>
+                            <RadzenTextBox Placeholder="Buscar..."
+                                           @bind-Value="filtroTexto"
+                                           @oninput="@(args => { filtroTexto = args.Value.ToString(); AplicarFiltros(); })"
+                                           class="ent-input w-100" />
+                        </FilterTemplate>
+                        <Template Context="o">
+                            <a href="javascript:void(0)"
+                                   @onclick="() => AbrirInfoOrden(o)"
+                                   class="ent-link">
+                                <strong>@o.CodigoOrden</strong>
+                            </a>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    @* producto *@
+                    <RadzenDataGridColumn TItem="Orden" Property="Producto" Title="PRODUCTO / DESCRIPCIÓN" />
+
+                    @* porcentaje eficiencia *@
+                    <RadzenDataGridColumn TItem="Orden" Property="PorcentajeTiempoTotal" Title="EFICIENCIA" Width="250px">
+                        <Template Context="o">
+                            <RadzenStack Gap="0.2rem">
+                                <RadzenProgressBar Value="@o.PorcentajeTiempoTotal" ProgressBarStyle="ProgressBarStyle.Primary" />
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    @* fecha inicio *@
+                    <RadzenDataGridColumn TItem="Orden" Property="FechaInicio" Title="FECHA INICIO" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px" />
+                    @* fecha fin *@
+                    <RadzenDataGridColumn TItem="Orden" Property="FechaFin" Title="FECHA FIN" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px">
+                        <Template Context="o">
+                            @(o.FechaFin.HasValue ? o.FechaFin.Value.ToString("dd/MM/yyyy HH:mm") : "--")
+                        </Template>
+                    </RadzenDataGridColumn>
+                    
+                    <RadzenDataGridColumn TItem="Orden" Property="Estado" Title="ESTADO" Width="140px" TextAlign="TextAlign.Center">
+                        <FilterTemplate>
+                            <RadzenDropDown @bind-Value="filtroEstado"
+                                            Data="@opcionesEstado"
+                                            Change="@AplicarFiltros"
+                                            class="ent-input w-100" />
+                        </FilterTemplate>
+                        <Template Context="o">
+                            <RadzenBadge BadgeStyle="@(o.Estado == "En curso" ? BadgeStyle.Success :
+                                                       o.Estado == "Finalizado" ? BadgeStyle.Danger :
+                                                       BadgeStyle.Info)"
+                                         Text="@o.Estado.ToUpper()"
+                                         class="ent-badge" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="Orden" Title="ACCIONES" Width="100px" TextAlign="TextAlign.Center" Filterable="false" Sortable="false">
+                        <Template Context="o">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Text" Size="ButtonSize.Medium"
+                                          Click="@(args => EditarOrden(o))" class="ent-action-btn" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    </RadzenStack>
+</div>
+
+<style>
+    /* fondo */
+    .fuxa-enterprise-container {
+        background-color: #FAFAFA;
+        min-height: 100vh;
+        padding: 2rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* titulos */
+    .ent-title {
+        color: #1A2E3F;
+        font-weight: 800 !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 0;
+    }
+
+    .ent-title-underline {
+        height: 4px;
+        width: 60px;
+        background-color: #1F4E79;
+        margin-top: 5px;
+    }
+
+    .ent-grid-wrapper {
+        border: 1px solid #D5E3EF;
+        background: white;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    /* tabla */
+    .ent-datagrid {
+        border: none !important;
+    }
+
+    /* cabecera */
+    .ent-datagrid .rz-datagrid-header-cell {
+        background-color: #1A2E3F !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.5px;
+        border-bottom: 3px solid #1F4E79 !important;
+        padding: 12px 15px !important;
+        text-transform: uppercase;
+    }
+
+    .ent-datagrid .rz-datagrid-header-cell .rz-sortable-column-icon {
+        color: #7BB3D4 !important;
+    }
+
+    .ent-datagrid .rz-datagrid-row td {
+        border-bottom: 1px solid #EEEEEE !important;
+        padding: 12px 15px !important;
+        color: #333333 !important;
+        font-size: 0.95rem;
+    }
+
+    .ent-datagrid .rz-datagrid-row:nth-child(even) > td {
+        background-color: #F8F9FA !important;
+    }
+
+    .ent-datagrid .rz-datagrid-row:hover td {
+        background-color: #E6F2FF !important;
+    }
+
+    .ent-badge {
+        border-radius: 4px !important;
+        padding: 6px 12px !important;
+        font-weight: bold !important;
+        letter-spacing: 0.5px;
+        font-size: 0.8rem;
+    }
+
+    .ent-input {
+        border-radius: 4px !important;
+        border: 1px solid #CCCCCC !important;
+    }
+
+    .ent-input:focus {
+        border-color: #1F4E79 !important;
+        box-shadow: 0 0 0 2px rgba(31,78,121,0.2) !important;
+    }
+
+    .ent-btn-solid {
+        background-color: #1F4E79 !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+    }
+
+    .ent-btn-solid:hover {
+        background-color: #163857 !important;
+    }
+
+    .ent-btn-outline {
+        border: 1px solid #1F4E79 !important;
+        color: #1F4E79 !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+        background-color: transparent !important;
+    }
+
+    .ent-btn-outline:hover {
+        background-color: #F0F4F8 !important;
+    }
+
+    .ent-action-btn {
+        color: #1F4E79 !important;
+        background: transparent !important;
+    }
+
+    .ent-action-btn:hover {
+        background: #E6F2FF !important;
+    }
+
+    .ent-link {
+        color: #1F4E79 !important;
+        text-decoration: none !important;
+        transition: all 0.2s;
+    }
+
+        .ent-link:hover {
+            color: #0F2A4A !important;
+            text-decoration: underline !important;
+        }
+</style>
+
+@code {
+    List<Orden> listaOrdenes = new();
+    List<Orden> almacenOrdenes = new();
+    List<Orden> escaparateOrdenes = new();
+
+    string filtroTexto = "";
+    string filtroEstado = "TODOS";
+    List<string> opcionesEstado = new List<string> { "TODOS", "En curso", "Finalizado", "Pendiente" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarOrdenes();
+    }
+
+    private async Task CargarOrdenes()
+    {
+        var datos = await ImputacionService.ObtenerOrdenesConProgresoAsync();
+        almacenOrdenes = datos.ToList();
+        AplicarFiltros();
+    }
+
+    private async Task AbrirDialogoNuevaOrden()
+    {
+        var res = await DialogService.OpenAsync<DialogoPlanificarOrden>("Planificar nueva orden",
+            new Dictionary<string, object>(),
+            new DialogOptions() { Width = "500px", Style = "position: absolute;" });
+
+        if (res == true)
+        {
+            await CargarOrdenes();
+        }
+    }
+
+    private async Task EditarOrden(Orden orden)
+    {
+        var parametros = new Dictionary<string, object> {
+            { "OrdenParaEditar", orden }
+        };
+
+        var res = await DialogService.OpenAsync<DialogoPlanificarOrden>("Editar orden", parametros, new DialogOptions() { Width = "500px" });
+
+        if (res == true)
+        {
+            await CargarOrdenes();
+        }
+    }
+
+    private void LimpiarBusqueda()
+    {
+        filtroTexto = "";
+        filtroEstado = "TODOS";
+        AplicarFiltros();
+    }
+
+    private void AplicarFiltros()
+    {
+        var resultadoTemporal = almacenOrdenes.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(filtroTexto))
+        {
+            resultadoTemporal = resultadoTemporal.Where(orden => orden.CodigoOrden != null && orden.CodigoOrden.Contains(filtroTexto, StringComparison.OrdinalIgnoreCase));
+        }
+        if (filtroEstado != "TODOS")
+        {
+            resultadoTemporal = resultadoTemporal.Where(orden => orden.Estado == filtroEstado);
+        }
+        resultadoTemporal = resultadoTemporal.OrderBy(orden => orden.Estado switch
+        {
+            "En curso" => 1,
+            "Pendiente" => 2,
+            "Finalizado" => 3,
+            _ => 4
+        })
+        .ThenByDescending(orden => orden.FechaInicio);
+        escaparateOrdenes = resultadoTemporal.ToList();
+    }
+
+    private async Task AbrirInfoOrden(Orden orden)
+    {
+        var parametros = new Dictionary<string, object>
+        {
+            { "OrdenInfo", orden }
+        };
+
+        await DialogService.OpenAsync<DialogoInfoOrden>(
+            $"Detalles de Orden: {orden.CodigoOrden}",
+            parametros,
+            new DialogOptions() { Width = "750px", Height = "750px", Resizable = true, Draggable = true }
+        );
+    }
+}

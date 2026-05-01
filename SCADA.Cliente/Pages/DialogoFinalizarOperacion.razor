@@ -1,0 +1,414 @@
+﻿@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+
+<div class="fuxa-premium-dialog">
+
+    @if (OperacionActiva == null)
+    {
+        <div class="rz-p-4">
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" ShowIcon="true">
+                No hay una operación activa en esta máquina para finalizar.
+            </RadzenAlert>
+            <div class="fuxa-dialog-footer">
+                <RadzenButton Text="CERRAR" Click="() => DialogService.Close()" class="btn-fuxa-outline w-100" />
+            </div>
+        </div>
+    }
+
+    else
+    {
+        <div class="dialog-header-fuxa">
+            <RadzenIcon Icon="task_alt" class="header-icon" />
+            <div class="header-text">
+                <h3 class="m-0">RESUMEN DE OPERACIÓN</h3>
+            </div>
+        </div>
+
+
+
+        <div class="dialog-body-fuxa">
+            <div class="info-strip">
+                <div class="info-block">
+                    <span class="info-label">CÓDIGO DE ORDEN</span>
+                    <span class="info-value text-fuxa-blue">@OperacionActiva.CodigoOperacion</span>
+                </div>
+            </div>
+
+
+
+            @* <div class="stats-grid">
+                <div class="stat-card success-card">
+                    <RadzenIcon Icon="check_circle_outline" class="stat-icon" />
+                    <span class="stat-label">FABRICADAS</span>
+                    <span class="stat-number">@PiezasFabricadas</span>
+                </div>
+
+
+
+                <div class="stat-card danger-card">
+                    <RadzenIcon Icon="highlight_off" class="stat-icon" />
+                    <span class="stat-label">ROTAS</span>
+                    <span class="stat-number">@PiezasRotas</span>
+                </div>
+            </div> *@
+
+
+
+            <div class="time-strip">
+                <RadzenIcon Icon="schedule" class="time-icon" />
+                <div class="time-content">
+                    <span class="time-label">FECHA Y HORA DE CIERRE</span>
+                    <span class="time-value">@fechaFin.ToString("dd/MM/yyyy - HH:mm")</span>
+                </div>
+            </div>
+
+            <div class="fuxa-alert-box">
+                <RadzenIcon Icon="warning_amber" class="alert-icon" />
+                <div class="alert-text">
+                    <b>Atención:</b> Al confirmar, esta operación se cerrará de forma permanente y la máquina quedará libre.
+                </div>
+            </div>
+        </div>
+
+        <div class="fuxa-dialog-footer">
+
+            <RadzenButton Text="VOLVER"
+                          Icon="arrow_back"
+                          Click="() => DialogService.Close(false)"
+                          class="btn-fuxa-outline" />
+
+            <RadzenButton Text="CONFIRMAR CIERRE"
+                          Icon="lock"
+                          Click="() => DialogService.Close(true)"
+                          class="btn-fuxa-danger" />
+        </div>
+    }
+</div>
+
+
+
+<style>
+
+    .fuxa-premium-dialog {
+        background: #FFFFFF;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+    }
+
+
+
+    .dialog-header-fuxa {
+        background: linear-gradient(135deg, #1A2E3F 0%, #1F4E79 100%);
+        color: white;
+        padding: 20px 25px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+
+
+    .header-icon {
+        font-size: 2.5rem;
+        color: #7BB3D4;
+    }
+
+
+
+    .header-text h3 {
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: white;
+    }
+
+
+
+    .header-subtitle {
+        font-size: 0.9rem;
+        color: #BDD7EE;
+    }
+
+
+
+    .dialog-body-fuxa {
+        padding: 25px;
+        background: #F8FAFC;
+    }
+
+
+
+    .info-strip {
+        background: white;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        display: flex;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+
+
+    .info-block {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+    }
+
+
+
+    .info-divider {
+        width: 1px;
+        background: #E2E8F0;
+        margin: 0 15px;
+    }
+
+
+
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748B;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+
+
+
+    .info-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1E293B;
+    }
+
+
+
+    .text-fuxa-blue {
+        color: #1F4E79 !important;
+    }
+
+
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+
+
+    .stat-card {
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid transparent;
+        transition: transform 0.2s ease;
+    }
+
+
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+
+
+    .success-card {
+        background: #F0FDF4;
+        border-color: #BBF7D0;
+    }
+
+
+
+        .success-card .stat-icon {
+            color: #22C55E;
+        }
+
+
+
+        .success-card .stat-label {
+            color: #166534;
+        }
+
+
+
+        .success-card .stat-number {
+            color: #15803D;
+        }
+
+
+
+    .danger-card {
+        background: #FEF2F2;
+        border-color: #FECACA;
+    }
+
+
+
+        .danger-card .stat-icon {
+            color: #EF4444;
+        }
+
+
+
+        .danger-card .stat-label {
+            color: #991B1B;
+        }
+
+
+
+        .danger-card .stat-number {
+            color: #B91C1C;
+        }
+
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        opacity: 0.8;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .time-strip {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: white;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .time-icon {
+        font-size: 2rem;
+        color: #64748B;
+    }
+
+    .time-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .time-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748B;
+    }
+
+    .time-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1E293B;
+    }
+
+    .fuxa-alert-box {
+        background: #FFFBEB;
+        border: 1px solid #FDE68A;
+        border-radius: 10px;
+        padding: 15px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .alert-icon {
+        font-size: 2rem;
+        color: #D97706;
+    }
+
+    .alert-text {
+        font-size: 0.95rem;
+        color: #92400E;
+        line-height: 1.4;
+    }
+
+    .fuxa-dialog-footer {
+        padding: 20px 25px;
+        background: #FFFFFF;
+        border-top: 1px solid #E2E8F0;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 15px;
+    }
+
+    .btn-fuxa-outline {
+        background: white !important;
+        border: 2px solid #CBD5E1 !important;
+        color: #475569 !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 60px !important;
+        font-size: 1.1rem !important;
+        transition: all 0.2s !important;
+    }
+
+        .btn-fuxa-outline:hover {
+            background: #F1F5F9 !important;
+            color: #0F172A !important;
+        }
+
+
+
+    .btn-fuxa-danger {
+        background: linear-gradient(180deg, #DC2626 0%, #B91C1C 100%) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 900 !important;
+        height: 60px !important;
+        font-size: 1.1rem !important;
+        letter-spacing: 0.5px !important;
+        color: white !important;
+        box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2) !important;
+        transition: all 0.2s !important;
+    }
+
+        .btn-fuxa-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(220, 38, 38, 0.3) !important;
+            background: linear-gradient(180deg, #EF4444 0%, #DC2626 100%) !important;
+        }
+
+</style>
+
+
+
+@code {
+
+    [Parameter] public dynamic OperacionActiva { get; set; }
+
+    [Parameter] public int PiezasFabricadas { get; set; }
+
+    [Parameter] public int PiezasRotas { get; set; }
+
+
+
+
+    private DateTime fechaFin = DateTime.Now;
+
+}

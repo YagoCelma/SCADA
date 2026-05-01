@@ -1,0 +1,150 @@
+﻿@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@using SCADA.Cliente.Services
+
+@inject ServicioMaquina ServicioMaquina
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject ServicioEmpleado ServicioEmpleado
+
+<div class="fuxa-dialog-wrapper">
+    <RadzenRow Gap="1.5rem">
+        @* panel izquierdo *@
+        <RadzenColumn Size="12" SizeMD="5">
+            <div class="fuxa-step-card h-100">
+                <div class="step-header">
+                    <RadzenIcon Icon="person_add" Style="font-size: 1.5rem; color: #1F4E79; margin-right: 10px;" />
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title">Autorizar Operario</RadzenText>
+                </div>
+
+                <RadzenText TextStyle="TextStyle.Body2" class="rz-mb-2">Busca un empleado para darle acceso a esta máquina:</RadzenText>
+
+                <RadzenDropDown @bind-Value="idEmpleadoSeleccionado"
+                                Data="@empleadosDisponibles"
+                                TextProperty="BusquedaCombinada"
+                                ValueProperty="Id"
+                                AllowFiltering="true"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Placeholder="Escriba nombre o código..."
+                                class="fuxa-modern-input rz-mb-4" />
+
+                <RadzenButton Text="ASIGNAR A MÁQUINA"
+                              Icon="check_circle"
+                              Click="AsignarOperario"
+                              Disabled="@(idEmpleadoSeleccionado == 0)"
+                              class="btn-fuxa-success w-100" />
+            </div>
+        </RadzenColumn>
+
+        @* panel derecho *@
+        <RadzenColumn Size="12" SizeMD="7">
+            <div class="fuxa-step-card h-100" style="background-color: #FFFFFF;">
+                <div class="step-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 10px;">
+                    <RadzenIcon Icon="badge" Style="font-size: 1.5rem; color: #64748B; margin-right: 10px;" />
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title" Style="color: #64748B;">Personal Autorizado</RadzenText>
+                </div>
+
+                <RadzenDataGrid Data="@operariosAsignados" TItem="Empleado"
+                                AllowPaging="true" PageSize="5"
+                                class="fuxa-custom-grid rz-mt-3">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Empleado" Property="Nombre" Title="Nombre">
+                            <Template Context="emp">
+                                <strong>@emp.Nombre @emp.Apellidos</strong>
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Empleado" Property="Cargo" Title="Cargo" Width="120px">
+                            <Template Context="emp">
+                                <RadzenBadge BadgeStyle="@(emp.Cargo == "Encargado" ? BadgeStyle.Warning : BadgeStyle.Light)"
+                                             Text="@emp.Cargo" />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Empleado" Title="" Width="60px" TextAlign="TextAlign.Center">
+                            <Template Context="emp">
+                                <RadzenButton Icon="person_remove"
+                                              ButtonStyle="ButtonStyle.Danger"
+                                              Variant="Variant.Flat"
+                                              Size="ButtonSize.Small"
+                                              Click="@(() => QuitarOperario(emp))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </div>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <div class="fuxa-dialog-actions">
+        <RadzenButton Text="FINALIZAR" Icon="done" Click="() => DialogService.Close(true)" class="btn-fuxa-outline" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public int IdMaquina { get; set; }
+    [Parameter] public string NombreMaquina { get; set; }
+
+    private List<Empleado> empleadosDisponibles = new();
+    private List<Empleado> operariosAsignados = new();
+    private int idEmpleadoSeleccionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(50);
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            operariosAsignados = await ServicioMaquina.ObtenerOperariosDeUnaMaquina(IdMaquina);
+
+            await Task.Delay(50);
+
+            empleadosDisponibles = await ServicioEmpleado.GetAllEmpleadosAsync();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en CargarDatos: {ex.Message}");
+        }
+
+    }
+
+    private async Task AsignarOperario()
+    {
+        if (idEmpleadoSeleccionado > 0)
+        {
+            await ServicioMaquina.AsignarEmpleadoAMaquinaAsync(IdMaquina, idEmpleadoSeleccionado);
+            NotificationService.Notify(NotificationSeverity.Success, "Asignado", "Empleado autorizado correctamente");
+
+            idEmpleadoSeleccionado = 0;
+
+            await Task.Delay(50);
+            await CargarDatos();
+            StateHasChanged();
+        }
+    }
+
+    private async Task QuitarOperario(Empleado emp)
+    {
+        var confirmar = await DialogService.Confirm(
+            $"¿Retirar el permiso a {emp.Nombre} para operar esta máquina?",
+            "Confirmar acción",
+            new ConfirmOptions { OkButtonText = "Sí, quitar", CancelButtonText = "Cancelar", CssClass = "fuxa-delete-dialog" });
+
+        if (confirmar == true)
+        {
+            await ServicioMaquina.DesvincularEmpleadoDeMaquinaAsync(IdMaquina, emp.Id);
+
+            await Task.Delay(50);
+            await CargarDatos();
+
+            NotificationService.Notify(NotificationSeverity.Info, "Actualizado", $"{emp.Nombre} eliminado de la máquina");
+        }
+    }
+}

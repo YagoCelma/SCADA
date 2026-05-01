@@ -1,0 +1,109 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@inject Radzen.DialogService DialogService
+@inject ImputacionService ImputacionService
+@inject NotificationService NotificationService
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Style="font-size: 1.1rem;">Código de Orden (Automático)</RadzenText>
+            <RadzenTextBox @bind-Value="nuevaOrden.CodigoOrden" Style="width: 100%;" Disabled="true" />
+
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mt-3" Style="font-size: 1.1rem;">Descripción</RadzenText>
+            <RadzenTextBox @bind-Value="nuevaOrden.Producto" Placeholder="Ej: 50 Armarios de Roble" Style="width: 100%;" />
+
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mt-3">Estado de la Orden</RadzenText>
+            <RadzenDropDown @bind-Value="nuevaOrden.Estado"
+                            Data="@(new[] { "Pendiente", "Activa", "Finalizado"})"
+                            Style="width: 100%;" />
+
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="mt-3" Style="font-size: 1.1rem;">Fecha de Inicio</RadzenText>
+            <RadzenDatePicker @bind-Value="nuevaOrden.FechaInicio" ShowTime="true" DateFormat="dd/MM/yyyy HH:mm" Style="width: 100%;" />
+
+            <div class="mt-4" style="text-align: right;">
+                <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" class="me-2" Size="ButtonSize.Large" />
+                <RadzenButton Text="@textoBoton" Click="GuardarOrdenMadre" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Large" Style="font-weight: bold;" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Orden? OrdenParaEditar { get; set; }
+
+    Orden nuevaOrden = new Orden();
+    string textoBoton = "CREAR ORDEN";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (OrdenParaEditar != null)
+        {
+            nuevaOrden = OrdenParaEditar;
+            textoBoton = "GUARDAR CAMBIOS";
+        }
+        else
+        {
+            nuevaOrden.CodigoOrden = await ImputacionService.GenerarProximoCodigoOrdenAsync();
+            nuevaOrden.FechaInicio = DateTime.Now;
+            nuevaOrden.Estado = "Pendiente";
+            textoBoton = "CREAR ORDEN";
+        }
+    }
+
+    async Task GuardarOrdenMadre()
+    {
+        try
+        {
+            bool exito;
+
+            if (OrdenParaEditar == null)
+            {
+                exito = await ImputacionService.InsertarOrdenMadreAsync(nuevaOrden);
+
+                if (exito)
+                {
+                    await ImputacionService.GenerarHojaRutaAsync(nuevaOrden.Id);
+                }
+            }
+            else
+            {
+                exito = await ImputacionService.ActualizarOrdenAsync(nuevaOrden);
+            }
+
+            if (exito)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Operación completada",
+                    Detail = $"La orden {nuevaOrden.CodigoOrden} se guardó correctamente.",
+                    Duration = 4000
+                });
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = "No se pudo guardar en la base de datos.",
+                    Duration = 4000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error Crítico",
+                Detail = ex.Message,
+                Duration = 5000
+            });
+        }
+    }
+}

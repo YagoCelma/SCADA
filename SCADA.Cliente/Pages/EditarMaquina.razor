@@ -1,0 +1,133 @@
+﻿@page "/editar-maquina/{id:int}"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject ServicioMaquina MachineService
+@inject NavigationManager Navigation
+@inject ServicioEmpleado ServicioEmpleado
+
+
+
+<h3>@(machine?.Id == 0 ? "Registrar nueva máquina" : "Editar máquina")</h3>
+
+@if (machine == null)
+{
+    <p>Iniciando formulario...</p>
+}
+else
+{
+    <div style="border-radius: 8px; border:1px solid #ccc; padding:20px; width:500px; background-color: #f9f9f9;">
+
+        <div class="alert alert-info" style="font-size: 0.9rem;">
+            ID Técnico: <strong>@id</strong>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de la Máquina</label>
+            <input class="form-control" @bind="machine.Nombre" placeholder="Ej: Prensa Hidráulica" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Sección</label>
+            <input class="form-control" @bind="@machine?.Seccion?.Nombre" placeholder="Ej: Corte, Embolsado..." />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Objetivo de ciclos</label>
+            <input type="number" class="form-control" @bind="machine.CiclosObjetivo" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Estado Actual</label>
+            <select class="form-select" @bind="machine.EstadoActualId">
+                <option value="1">Activa</option>
+                <option value="2">Incidencia</option>
+                <option value="3">Parada</option>
+                <option value="4">No disponible</option>
+            </select>
+        </div>
+
+        <div class="mt-4">
+            <button class="btn btn-primary" @onclick="Guardar">
+                <i class="bi bi-save"></i> Guardar datos
+            </button>
+            <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    List<Empleado> encargados = new();
+
+    private Maquina? machine;
+    private Empleados? empleados;
+
+    int idEncargadoSeleccionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // buscamos la maquina en la base de datos
+        var maquinaExistente = await MachineService.GetByIdAsync(id);
+
+        if (maquinaExistente != null)
+        {
+            machine = maquinaExistente;
+        }
+        else
+        {
+            // sino existe se crea un objeto vacio para que se rellene
+            machine = new Maquina
+            {
+                Nombre = "",
+                CiclosObjetivo = 0,
+                EstadoActualId = 1, // por defecto la ponemos activa
+                FechaCreacion = DateTime.Now
+            };
+        }
+        CargarEncargados();
+    }
+
+    private async Task Guardar()
+    {
+        if (machine == null) return;
+
+        try
+        {
+            await MachineService.GuardarMaquina(machine);
+
+            Navigation.NavigateTo("/maquinas");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al guardar en la base de datos: {ex.Message}");
+        }
+
+        
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/maquinas");
+    }
+
+    private async Task CargarEncargados()
+    {
+        var resultado = await ServicioEmpleado.GetAllEmpleadosAsync();
+
+        if (resultado != null)
+        {
+            foreach (var encargado in resultado)
+            {
+                if (encargado.Cargo == "Encargado")
+                {
+                    encargados.Add(encargado);
+                }
+            }
+            Console.WriteLine($"Se han cargado {encargados.Count} encargados de la base de datos.");
+        }
+    }
+}

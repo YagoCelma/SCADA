@@ -1,0 +1,86 @@
+﻿@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@using SCADA.Cliente.Services
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject ServicioMaquina ServicioMaquina
+@inject ImputacionService ImputacionService
+
+<RadzenStack Gap="1.5rem" class="rz-p-4">
+
+    <RadzenStack Gap="0.5rem">
+        <RadzenText TextStyle="TextStyle.Subtitle2">Nombre de la sección</RadzenText>
+        <RadzenTextBox @bind-Value="NuevaSeccion.Nombre" Placeholder="Ej: Ensamblado, Pintura..." class="w-100" />
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" class="rz-mt-4">
+        <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="Guardar Sección" Icon="save" Click="Guardar" ButtonStyle="ButtonStyle.Primary" />
+    </RadzenStack>
+
+</RadzenStack>
+@code {
+    [Parameter] public Seccion NuevaSeccion { get; set; }
+    public List<Seccion> seccionesExistentes { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarListaSecciones();
+    }
+
+    private async Task Guardar()
+    {
+
+        var secciones = await ServicioMaquina.ObtenerSecciones();
+
+        if (string.IsNullOrWhiteSpace(NuevaSeccion.Nombre))
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "El nombre de la sección no puede estar vacío");
+            return;
+        }
+
+        foreach (var s in secciones)
+        {
+            if (s.Nombre.Equals(NuevaSeccion.Nombre, StringComparison.OrdinalIgnoreCase))
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Atención", "Ya existe una sección con ese nombre");
+                return;
+            }
+        }
+
+        try
+        {
+            foreach (var seccion in seccionesExistentes)
+            {
+                if (seccion.Nombre.Equals(NuevaSeccion.Nombre))
+                {
+                    NotificationService.Notify(NotificationSeverity.Error, "Error", "Ya existe una seccion con ese nombre");
+                    return;
+                }
+            }
+
+            bool exito = await ImputacionService.GuardarSeccionAsync(NuevaSeccion);
+
+            if (exito)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Sección guardada correctamente");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo guardar la sección en la base de datos");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Fallo al guardar: " + ex.Message);
+        }
+    }
+
+    private async Task<List<Seccion>> CargarListaSecciones()
+    {
+        return seccionesExistentes = await ServicioMaquina.ObtenerSecciones();
+    }
+}

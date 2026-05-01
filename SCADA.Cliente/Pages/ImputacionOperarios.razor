@@ -1,0 +1,147 @@
+﻿@page "/imputacion-operarios"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject NotificationService NotificationService
+@inject ImputacionService ImputacionServicios
+
+<RadzenText TextStyle="TextStyle.H4" class="rz-mb-4">Imputación de horas operarios</RadzenText>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4 rz-p-4">
+            <RadzenCard Variant="Variant.Flat" class="rz-shadow-2">
+                <RadzenStack Gap="1.5rem">
+
+                    <RadzenStack Gap="0.4rem">
+                        <RadzenText TextStyle="TextStyle.Caption" Weight="FontWeight.Bold">FILTRAR OPERACIONES POR ESTADO</RadzenText>
+                        <RadzenSelectBar @bind-Value="@estadoFiltro" TValue="string" Change="@OnEstadoFiltroChange" class="rz-w-100">
+                            <Items>
+                                <RadzenSelectBarItem Text="Activas" Value="@("Activa")" />
+                                <RadzenSelectBarItem Text="Finalizadas" Value="@("Finalizada")" />
+                            </Items>
+                        </RadzenSelectBar>
+                    </RadzenStack>
+                    @* codigo *@
+                    <RadzenStack Gap="0.4rem">
+                        <RadzenText TextStyle="TextStyle.Caption" Weight="FontWeight.Bold">1. CÓDIGO DE OPERACIÓN</RadzenText>
+                        <RadzenTextBox @bind-Value="nuevaImputacion.CodigoOperacion"
+                                       Placeholder="Selecciona en la tabla..."
+                                       Style="width: 100%;" ReadOnly="true" />
+                    </RadzenStack>
+                    @* trabajador *@
+                    <RadzenStack Gap="0.4rem">
+                        <RadzenText TextStyle="TextStyle.Caption" Weight="FontWeight.Bold">2. TRABAJADOR</RadzenText>
+                        <RadzenDropDown TValue="int" Data="@empleados" @bind-Value="nuevaImputacion.IdEmpleado"
+                                        TextProperty="Nombre" ValueProperty="Id"
+                                        AllowFiltering="true" Placeholder="Buscar nombre..." Style="width: 100%;" />
+                    </RadzenStack>
+                    @* horas *@
+                    <RadzenStack Gap="0.4rem">
+                        <RadzenText TextStyle="TextStyle.Caption" Weight="FontWeight.Bold">3. NÚMERO DE HORAS</RadzenText>
+                        <RadzenNumeric TValue="decimal" @bind-Value="nuevaImputacion.Horas" Style="width: 100%;" Min="0.1m" Step="0.5m" />
+                    </RadzenStack>
+
+                    @* observaciones *@
+                    <RadzenStack Gap="0.4rem">
+                        <RadzenText TextStyle="TextStyle.Caption" Weight="FontWeight.Bold">4. OBSERVACIONES</RadzenText>
+                        <RadzenTextArea @bind-Value="nuevaImputacion.Observaciones"
+                                        Placeholder="Escribe si ha habido alguna incidencia..."
+                                        Style="width: 100%;"
+                                        Rows="3" />
+                    </RadzenStack>
+
+                    @* boton de guardar *@
+                    <RadzenButton Click="@GuardarImputacion" Text="GUARDAR IMPUTACIÓN"
+                                  Icon="save" ButtonStyle="ButtonStyle.Success"
+                                  Size="ButtonSize.Large" class="rz-mt-4 rz-w-100"
+                                  Disabled="@(string.IsNullOrEmpty(nuevaImputacion.CodigoOperacion))" />
+                </RadzenStack>
+            </RadzenCard>
+        </div>
+        @* tabla *@
+        <div class="col-md-8 rz-p-4">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-2"><b>Click sobre una operación para seleccionarla:</b></RadzenText>
+            <RadzenDataGrid Data="@operacionesFiltradas" TItem="OperacionResumenDTO"
+                            SelectionMode="DataGridSelectionMode.Single"
+                            RowSelect="@OnRowSelect"
+                            AllowPaging="true" PageSize="10" class="rz-shadow-2">
+                <Columns>
+                    <RadzenDataGridColumn TItem="OperacionResumenDTO" Property="CodigoOperacion" Title="Cód. Operación" Width="180px" />
+                    <RadzenDataGridColumn TItem="OperacionResumenDTO" Property="NombreOrden" Title="Orden" />
+                    <RadzenDataGridColumn TItem="OperacionResumenDTO" Property="Producto" Title="Producto" />
+                    <RadzenDataGridColumn TItem="OperacionResumenDTO" Property="NombreMaquina" Title="Máquina" />
+                    <RadzenDataGridColumn TItem="OperacionResumenDTO" Property="Estado" Title="Estado">
+                        <Template Context="o">
+                            <RadzenBadge BadgeStyle="@(o.Estado == "Activa" ? BadgeStyle.Success : BadgeStyle.Secondary)" Text="@o.Estado" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Empleado> empleados = new();
+    private List<OperacionResumenDTO> todasLasOperaciones = new();
+    private List<OperacionResumenDTO> operacionesFiltradas = new();
+
+    private string estadoFiltro = "Activa";
+    private ImputacionModel nuevaImputacion = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        empleados = await ImputacionServicios.GetEmpleadosAsync();
+        todasLasOperaciones = await ImputacionServicios.ObtenerTodasLasOperacionesResumenAsync();
+        FiltrarTabla();
+    }
+
+    private void OnEstadoFiltroChange(string nuevoEstado)
+    {
+        FiltrarTabla();
+    }
+
+    private void FiltrarTabla()
+    {
+        operacionesFiltradas = todasLasOperaciones
+            .Where(o => o.Estado == estadoFiltro)
+            .ToList();
+    }
+
+    private void OnRowSelect(OperacionResumenDTO op)
+    {
+        nuevaImputacion.CodigoOperacion = op.CodigoOperacion;
+        nuevaImputacion.IdOperacionReal = op.Id;
+        StateHasChanged();
+    }
+
+    private async Task GuardarImputacion()
+    {
+        if (nuevaImputacion.IdEmpleado == 0 || nuevaImputacion.Horas <= 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "Selecciona un trabajador e indica las horas");
+            return;
+        }
+
+        bool exito = true;
+
+        if (exito)
+        {
+            NotificationService.Notify(NotificationSeverity.Success, "Guardado", "Horas imputadas correctamente");
+            nuevaImputacion = new ImputacionModel();
+            StateHasChanged();
+        }
+    }
+
+    public class ImputacionModel
+    {
+        public string CodigoOperacion { get; set; } = "";
+        public int IdOperacionReal { get; set; }
+        public int IdEmpleado { get; set; }
+        public decimal Horas { get; set; }
+        public string Observaciones { get; set; } = "";
+    }
+}

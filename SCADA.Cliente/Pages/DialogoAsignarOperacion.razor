@@ -1,0 +1,122 @@
+﻿@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@using SCADA.Cliente.Services
+
+@inject ServicioMaquina ServicioMaquina
+@inject Radzen.DialogService DialogService
+@inject NotificationService NotificationService
+@inject ImputacionService ImputacionService
+
+<RadzenStack Gap="1.5rem" class="rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6">Nueva Operación para: <b>@MaquinaCreacion.Nombre</b></RadzenText>
+
+    <RadzenCard Variant="Variant.Flat">
+        <RadzenStack Gap="1rem">
+            <RadzenRow AlignItems="AlignItems.Center">
+                <RadzenColumn Size="4">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Código Operación</RadzenText>
+                </RadzenColumn>
+                <RadzenColumn Size="8">
+                    <RadzenTextBox @bind-Value="modelo.CodigoOperacion" Style="width: 100%;" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* <RadzenRow AlignItems="AlignItems.Center">
+                <RadzenColumn Size="4">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Ciclos Objetivo</RadzenText>
+                </RadzenColumn>
+                <RadzenColumn Size="8">
+                    <RadzenNumeric @bind-Value="modelo.CiclosObjetivo" Style="width: 100%;" />
+                </RadzenColumn>
+            </RadzenRow> *@
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenText TextStyle="TextStyle.Subtitle1"><b>Seleccionar Orden de Fabricación:</b></RadzenText>
+    <RadzenDataGrid Data="@ordenesActivas"
+                    TItem="Orden"
+                    SelectionMode="DataGridSelectionMode.Single"
+                    @bind-Value="@selectedOrdenes"
+                    RowSelect="@OnRowSelect">
+        <Columns>
+            <RadzenDataGridColumn TItem="Orden" Property="CodigoOrden" Title="Código" />
+            <RadzenDataGridColumn TItem="Orden" Property="Producto" Title="Producto" />
+            <RadzenDataGridColumn TItem="Orden" Property="Estado" Title="Estado" />
+        </Columns>
+    </RadzenDataGrid>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem">
+        <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="Iniciar Operación" Click="Guardar" Icon="play_arrow"
+                      ButtonStyle="ButtonStyle.Success" Disabled="@(selectedOrdenes?.Any() == false)" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Maquina MaquinaCreacion { get; set; }
+
+    private List<Orden> ordenesActivas;
+    private IList<Orden> selectedOrdenes;
+    private NuevaOperacion modelo = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var todas = await ServicioMaquina.GetAllOrdenes();
+        ordenesActivas = todas.Where(o => o.Estado == "Activa").ToList();
+    }
+
+    private async Task Guardar()
+    {
+        try
+        {
+            var ordenSeleccionada = selectedOrdenes?.FirstOrDefault();
+
+            if (ordenSeleccionada == null)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Atención", "Debes seleccionar una orden de la tabla");
+                return;
+            }
+
+            var operacion = new OperacionesOrden
+            {
+                IdOrden = ordenSeleccionada.Id,
+                IdMaquina = MaquinaCreacion.Id,
+                IdSeccion = MaquinaCreacion.IdSeccion ?? 1,
+                IdOperacionMaestra = 1,
+                CodigoOperacion = modelo.CodigoOperacion,
+                CiclosObjetivo = modelo.CiclosObjetivo,
+                PiezasFabricadas = 0,
+                Estado = "Activa",
+                FechaInicio = DateTime.Now
+            };
+
+            var exito = await ServicioMaquina.InsertarOperacion(operacion);
+
+            if (exito)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Operación creada");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "La base de datos rechazó el registro");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error Crítico", ex.Message);
+            Console.WriteLine($"ERROR AL GUARDAR: {ex.ToString()}");
+        }
+    }
+    private async Task OnRowSelect(Orden orden)
+    {
+        if (orden != null)
+        {
+            modelo.CodigoOperacion = await ImputacionService.GenerarSiguienteCodigoOperacionAsync(orden.CodigoOrden);
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+}

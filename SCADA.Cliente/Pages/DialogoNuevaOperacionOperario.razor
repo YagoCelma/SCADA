@@ -1,0 +1,195 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+@inject ImputacionService ImputacionService
+
+<div class="fuxa-dialog-wrapper">
+    <div class="fuxa-step-card">
+        <div class="step-header">
+            <div class="step-number">1</div>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title">Seleccione orden de fabricación</RadzenText>
+        </div>
+
+        <RadzenDropDown @bind-Value="idOrdenSeleccionada"
+                        Data="@ordenesDisponibles"
+                        TextProperty="CodigoOrden"
+                        ValueProperty="Id"
+                        AllowFiltering="true"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        class="fuxa-modern-input" />
+    </div>
+
+    <div class="fuxa-step-card rz-mt-4">
+        <div class="step-header">
+            <div class="step-number">2</div>
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title">Ciclos objetivo en esta máquina</RadzenText>
+        </div>
+
+        <RadzenNumeric TValue="int" @bind-Value="ciclosObjetivo"
+                       Min="1"
+                       class="fuxa-modern-input numeric-center" />
+    </div>
+
+    <div class="fuxa-dialog-actions">
+        <RadzenButton Text="CANCELAR"
+                      Icon="close"
+                      Click="Cancelar"
+                      class="btn-fuxa-outline" />
+
+        <RadzenButton Text="ASIGNAR ORDEN"
+                      Icon="check_circle"
+                      Click="Confirmar"
+                      Disabled="@(idOrdenSeleccionada == 0)"
+                      class="btn-fuxa-success" />
+    </div>
+</div>
+
+<style>
+    .fuxa-dialog-wrapper {
+        padding: 10px;
+        background: #FFFFFF;
+    }
+
+    .fuxa-step-card {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+
+        .fuxa-step-card:hover {
+            border-color: #CBD5E1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+    .step-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .step-number {
+        background: #1F4E79;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 12px;
+        font-size: 0.9rem;
+    }
+
+    .step-title {
+        color: #1A2E3F;
+        font-weight: 700;
+        margin: 0 !important;
+    }
+
+    .fuxa-modern-input {
+        width: 100%;
+        height: 54px !important;
+        border-radius: 10px !important;
+        border: 2px solid #E2E8F0 !important;
+        background: #FFFFFF !important;
+        font-size: 1.1rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+        .fuxa-modern-input:focus, .fuxa-modern-input.rz-state-focus {
+            border-color: #1F4E79 !important;
+            box-shadow: 0 0 0 4px rgba(31, 78, 121, 0.1) !important;
+        }
+
+    .numeric-center input {
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 1.5rem !important;
+        color: #1F4E79 !important;
+    }
+
+    .fuxa-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #E2E8F0;
+    }
+
+    .btn-fuxa-outline {
+        background: transparent !important;
+        border: 2px solid #CBD5E1 !important;
+        color: #64748B !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 50px !important;
+        padding: 0 25px !important;
+    }
+
+        .btn-fuxa-outline:hover {
+            background: #F1F5F9 !important;
+            color: #1E293B !important;
+        }
+
+    .btn-fuxa-success {
+        background: #1D9E75 !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 50px !important;
+        padding: 0 25px !important;
+        color: white !important;
+        box-shadow: 0 4px 6px rgba(29, 158, 117, 0.2) !important;
+    }
+
+        .btn-fuxa-success:hover {
+            background: #15805d !important;
+            transform: translateY(-1px);
+        }
+</style>
+
+@code {
+    [Parameter] public int IdMaquina { get; set; }
+
+    private List<Orden> ordenesDisponibles;
+    private int idOrdenSeleccionada;
+    private int ciclosObjetivo = 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargamos la lista para el desplegable
+        ordenesDisponibles = await ImputacionService.ObtenerOrdenesActivasAsync();
+
+        if (ordenesDisponibles == null)
+        {
+            ordenesDisponibles = new List<Orden>();
+        }
+    }
+
+    private void Cancelar()
+    {
+        DialogService.Close(false);
+    }
+
+    private async Task Confirmar()
+    {
+        try
+        {
+            bool exito = await ImputacionService.AsignarOrdenAMaquinaAsync(idOrdenSeleccionada, IdMaquina, ciclosObjetivo);
+
+            if (exito)
+            {
+                DialogService.Close(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al asignar orden: {ex.Message}");
+        }
+    }
+}

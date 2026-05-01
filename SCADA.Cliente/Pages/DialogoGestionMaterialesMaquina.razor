@@ -1,0 +1,171 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject ServicioMaquina ServicioMaquina
+
+<div class="fuxa-premium-dialog p-4">
+
+    @* añadir nuevo material *@
+    <RadzenCard Variant="Variant.Outlined" class="rz-mb-4" Style="background-color: #F8FAFC;">
+        <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-2" Style="color: #64748B; font-weight: bold;">
+            AÑADIR NUEVO MATERIAL A LA MÁQUINA
+        </RadzenText>
+        <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDropDown @bind-Value="idMaterialSeleccionado"
+                                Data="@materialesNoAsignados"
+                                TextProperty="BusquedaCombinada"
+                                ValueProperty="Id"
+                                AllowFiltering="true"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                Placeholder="Buscar por nombre o código..."
+                                Style="width: 100%; border-radius: 8px; height: 45px;">
+
+                    <Template Context="item">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <span>@((item as Material).Nombre)</span>
+                            <span style="color: #94A3B8; font-size: 0.8rem; font-weight: normal; margin-left: 15px; font-family: monospace;">
+                                @((item as Material).CodigoMaterial)
+                            </span>
+                        </div>
+                    </Template>
+
+                    <ValueTemplate Context="item">
+                        <span>@((item as Material).Nombre)</span>
+                    </ValueTemplate>
+
+                </RadzenDropDown>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenButton Text="AÑADIR"
+                              Icon="add_circle"
+                              ButtonStyle="ButtonStyle.Success"
+                              Disabled="@(idMaterialSeleccionado == 0)"
+                              Click="AnadirMaterial"
+                              Style="width: 100%; height: 45px; font-weight: bold; border-radius: 8px;" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    @* listar y borrar *@
+    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-2" Style="color: #64748B; font-weight: bold;">
+        MATERIALES ASIGNADOS
+    </RadzenText>
+
+    <RadzenDataGrid Data="@materialesAsignados" TItem="Material" AllowPaging="true" PageSize="5"
+                    AllowSorting="true" class="fuxa-custom-grid">
+        <EmptyTemplate>
+            <p style="color: #94A3B8; font-size: 1rem; text-align: center; padding: 20px;">
+                Esta máquina aún no tiene materiales asignados.
+            </p>
+        </EmptyTemplate>
+        <Columns>
+            <RadzenDataGridColumn TItem="Material" Property="CodigoMaterial" Title="Código" Width="120px" />
+            <RadzenDataGridColumn TItem="Material" Property="Nombre" Title="Nombre" />
+
+            <RadzenDataGridColumn TItem="Material" Title="Quitar" Width="80px" TextAlign="TextAlign.Center">
+                <Template Context="material">
+                    <RadzenButton Icon="delete"
+                                  ButtonStyle="ButtonStyle.Danger"
+                                  Variant="Variant.Flat"
+                                  Size="ButtonSize.Medium"
+                                  Click="@(() => BorrarMaterial(material))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+    <div class="rz-mt-4" style="text-align: right; border-top: 1px solid #E2E8F0; padding-top: 15px;">
+        <RadzenButton Text="CERRAR" Click="() => DialogService.Close(true)" ButtonStyle="ButtonStyle.Light" Style="font-weight: bold; border-radius: 8px;" />
+    </div>
+</div>
+
+<style>
+    .fuxa-custom-grid {
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+        .fuxa-custom-grid .rz-grid-table thead th {
+            background-color: #F1F5F9;
+            color: #475569;
+            font-weight: 800;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+</style>
+
+@code {
+    [Parameter] public int IdMaquina { get; set; }
+
+    private List<Material> materialesAsignados = new();
+    private List<Material> todosLosMateriales = new();
+    private List<Material> materialesNoAsignados = new();
+
+    private int idMaterialSeleccionado = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(100);
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            materialesAsignados = await ServicioMaquina.ObtenerMaterialesDeMaquinaAsync(IdMaquina) ?? new List<Material>();
+
+            await Task.Delay(100);
+
+            todosLosMateriales = await ServicioMaquina.ObtenerTodosLosMaterialesAsync() ?? new List<Material>();
+
+            var idsAsignados = materialesAsignados.Select(m => m.Id).ToList();
+            materialesNoAsignados = todosLosMateriales.Where(m => !idsAsignados.Contains(m.Id)).ToList();
+
+            idMaterialSeleccionado = 0;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en CargarDatos Materiales: {ex.Message}");
+        }
+    }
+
+    private async Task AnadirMaterial()
+    {
+        try
+        {
+            await ServicioMaquina.AsignarMaterialAMaquinaAsync(IdMaquina, idMaterialSeleccionado);
+            NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Material añadido.");
+
+            await Task.Delay(50);
+            await CargarDatos();
+        }
+        catch (Exception)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo añadir.");
+        }
+    }
+
+    private async Task BorrarMaterial(Material material)
+    {
+        try
+        {
+            await ServicioMaquina.DesvincularMaterialDeMaquinaAsync(IdMaquina, material.Id);
+            NotificationService.Notify(NotificationSeverity.Info, "Borrado", "Material quitado.");
+
+            await Task.Delay(50);
+            await CargarDatos();
+        }
+        catch (Exception)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo quitar.");
+        }
+    }
+}

@@ -1,0 +1,71 @@
+﻿@page "/dashboard-maquina/{machineId:int}"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using System.Linq
+
+@inject ServicioMaquina MachineService
+@inject ServicioProductividad ProductivityService
+@inject NavigationManager Navigation
+
+<h3>Dashboard Máquina</h3>
+
+@if (machine == null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    var last = machine.Producciones?.OrderByDescending(p => p.FechaRegistro).FirstOrDefault();
+    var realCycles = last?.CiclosReales ?? 0;
+    var productivity = ProductivityService.Calcular(realCycles, machine.CiclosObjetivo);
+
+    <div style="padding:20px;border:1px solid #ccc;background:@GetColor(machine.EstadoActual?.Nombre)">
+
+        <h4>@machine.Nombre</h4>
+
+        <p><b>Sección:</b> @machine?.Seccion?.Nombre</p>
+
+        <p><b>Estado:</b> @machine?.EstadoActual?.Nombre (@machine?.EstadoActualId)</p>
+
+        <p><b>Objetivo ciclos:</b> @machine?.CiclosObjetivo</p>
+
+        <p><b>Ciclos reales:</b> @realCycles</p>
+
+        <p><b>Productividad:</b> @productivity %</p>
+
+        <button class="btn btn-secondary" @onclick="Volver">Volver</button>
+
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public int machineId { get; set; }
+
+    private Maquina? machine;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var machines = await MachineService.GetAllAsync();
+        machine = machines.FirstOrDefault(x => x.Id == machineId);
+    }
+
+    string GetColor(string? status)
+    {
+        return status switch
+        {
+            "En curso" => "#b6fcb6",
+            "Producción" => "#b6fcb6",
+            "Incidencia" => "#ffd966",
+            "Parado" => "#ffb3b3",
+            "Parada Técnica" => "#ffb3b3",
+            _ => "white"
+        };
+    }
+
+    private void Volver()
+    {
+        Navigation.NavigateTo("/maquinas");
+    }
+}

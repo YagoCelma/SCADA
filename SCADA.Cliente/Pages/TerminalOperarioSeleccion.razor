@@ -1,0 +1,179 @@
+﻿@page "/terminal-operario-seleccion"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject ServicioEmpleado ServicioEmpleado
+@inject NavigationManager NavManager
+@inject NotificationService NotificationService
+
+<div class="terminal-container">
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="machine-id">SELECCIÓN DE PERSONAL</div>
+            <div class="machine-name">Planta Principal</div>
+        </div>
+        <div class="topbar-center">
+            <div class="clock-big">@DateTime.Now.ToString("HH:mm")</div>
+        </div>
+    </div>
+
+    <div class="step-content">
+
+        @* pantalla operarios *@
+        @if(pasoActual == 1){
+
+            <RadzenText TextStyle="TextStyle.H5" class="instruction" Style="text-align: center; margin-bottom: 2rem;">
+            Seleccione su perfil de operario
+            </RadzenText>
+
+            @if (listaOperarios == null)
+            {
+                <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+            }
+            else if (!listaOperarios.Any())
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat">
+                    No hay operarios registrados en el sistema.
+                </RadzenAlert>
+            }
+            else
+            {
+                <div class="operario-grid">
+                    @foreach (var o in listaOperarios)
+                    {
+                        <div class="operario-card" @onclick="() => SeleccionarOperario(o)">
+                            <RadzenIcon Icon="person" Style="font-size: 3rem; color: #1F4E79; margin-bottom: 10px;" />
+                            <div class="name">@o.Nombre @o.Apellidos </div>
+                            <div class="surname">@(o.CodigoEmpleado)</div>
+                        </div>
+                    }
+                </div>
+            }
+
+        }
+        @* pantalla contraseña *@
+        else if (pasoActual == 2)
+        {
+            <div style="display: grid; grid-template-columns: 50px 1fr 50px; align-items: center; margin-bottom: 2rem;">
+                <RadzenButton Icon="arrow_back" Click="() => pasoActual = 1" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                
+                <RadzenText TextStyle="TextStyle.H5" class="instruction" Style="margin: 0; border: none; text-align: center;">
+                    Introduce tu PIN, @operarioSeleccionado.Nombre
+                </RadzenText>
+                
+                <div></div> </div>
+
+            <div class="numpad-container">
+                <div class="pin-display">
+                    @(new String('•', pinIngresado.Length))
+                </div>
+                
+                <div class="numpad-grid">
+                    <button class="num-btn" @onclick="() => AgregarNumero(1)">1</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(2)">2</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(3)">3</button>
+                    
+                    <button class="num-btn" @onclick="() => AgregarNumero(4)">4</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(5)">5</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(6)">6</button>
+                    
+                    <button class="num-btn" @onclick="() => AgregarNumero(7)">7</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(8)">8</button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(9)">9</button>
+                    
+                    <button class="num-btn btn-clear" @onclick="BorrarNumero"><RadzenIcon Icon="backspace" /></button>
+                    <button class="num-btn" @onclick="() => AgregarNumero(0)">0</button>
+                    <button class="num-btn btn-enter" @onclick="ValidarPin"><RadzenIcon Icon="login" /></button>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+<style>
+    .terminal-container { background: #F0F4F8; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    .topbar { background: #1F4E79; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #185FA5; }
+    .machine-id { color: #BDD7EE; font-size: 13px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+    .machine-name { font-size: 20px; font-weight: 500; color: white; }
+    .clock-big { font-size: 28px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .step-content { padding: 2rem; max-width: 1000px; margin: auto; }
+    .instruction { color: #1F4E79; font-weight: bold; }
+    
+    /* Operarios */
+    .operario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; }
+    .operario-card { background: white; padding: 1.5rem; border-radius: 12px; text-align: center; cursor: pointer; border: 1px solid #D5E3EF; transition: all 0.2s; }
+    .operario-card:hover { border-color: #2E75B6; transform: translateY(-5px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background-color: #f8fafc; }
+    .name { font-weight: bold; color: #1A2E3F; font-size: 1.2rem; }
+    .surname { color: #6B8FAD; font-size: 0.9rem; margin-top: 5px; }
+
+    /* estilo teclado */
+    .numpad-container { max-width: 350px; margin: 2rem auto 0 auto; }
+    .pin-display { 
+        background: white; border: 2px solid #D5E3EF; border-radius: 12px;
+        font-size: 3rem; letter-spacing: 15px; text-align: center; 
+        height: 80px; line-height: 80px; margin-bottom: 20px; 
+        color: #1F4E79; overflow: hidden;
+    }
+    .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .num-btn { 
+        background: white; border: 2px solid #D5E3EF; border-radius: 12px; 
+        font-size: 2rem; font-weight: bold; color: #1F4E79; 
+        padding: 20px 0; cursor: pointer; transition: all 0.1s; 
+        display: flex; align-items: center; justify-content: center;
+    }
+    .num-btn:active { background: #E9EEF4; transform: scale(0.95); }
+    .btn-clear { background:#dc3545; color: white; border-color: #dc3545 }
+    .btn-enter { background: #28a745; color: white; border-color: #28a745; }
+    .btn-enter:active { background: #218838; }
+</style>
+
+@code {
+    private List<Empleado> listaOperarios;
+    private Empleado operarioSeleccionado;
+
+    private int pasoActual = 1;
+    private string pinIngresado = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        listaOperarios = await ServicioEmpleado.GetAllAsync();
+    }
+
+    private void SeleccionarOperario(Empleado empleado)
+    {
+        operarioSeleccionado = empleado;
+        pinIngresado = "";
+        pasoActual = 2;
+    }
+
+    private void AgregarNumero(int numero)
+    {
+        if(pinIngresado.Length < 10)
+        {
+            pinIngresado += numero.ToString();
+        }
+    }
+
+    private void BorrarNumero()
+    {
+        if(pinIngresado.Length > 0)
+        {
+            pinIngresado = pinIngresado.Substring(0, pinIngresado.Length - 1);
+        }
+    }
+    private void ValidarPin()
+    {
+        if(pinIngresado == "1234")
+        {
+            NavManager.NavigateTo($"/terminal-operario/{operarioSeleccionado.Id}");
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "PIN incorrecto");
+            pinIngresado = "";
+        }
+    }
+}

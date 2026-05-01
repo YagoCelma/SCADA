@@ -1,0 +1,481 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject ImputacionService ImputacionService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<div class="fuxa-dialog-wrapper">
+    <RadzenRow Gap="1.5rem">
+
+        @* imputacion materiales *@
+        <RadzenColumn Size="12" SizeMD="5">
+            <div class="fuxa-step-card h-100">
+                <div class="step-header">
+                    <RadzenIcon Icon="category" Style="font-size: 1.5rem; color: #1F4E79; margin-right: 10px;" />
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title">Seleccione material</RadzenText>
+                </div>
+
+                @if (materialesDisponibles == null)
+                {
+                    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                }
+                else if (!materialesDisponibles.Any())
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat">
+                        No hay materiales disponibles.
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <RadzenDropDown @bind-Value="idMaterialSeleccionado"
+                                    Data="@materialesDisponibles"
+                                    TextProperty="BusquedaCombinada"
+                                    ValueProperty="Id"
+                                    AllowFiltering="true"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    Placeholder="Buscar material o código..."
+                                    class="fuxa-modern-input rz-mb-4">
+                        <Template Context="mat">
+                            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                <span>@mat.Nombre</span>
+                                <span style="color: #94A3B8; font-size: 0.85rem; margin-left: 15px; font-family: monospace;">
+                                    @mat.CodigoMaterial
+                                </span>
+                            </div>
+                        </Template>
+                    </RadzenDropDown>
+
+                    @if (idMaterialSeleccionado != 0)
+                    {
+                        var matSeleccionado = materialesDisponibles.FirstOrDefault(m => m.Id == idMaterialSeleccionado);
+                        if (matSeleccionado != null)
+                        {
+                            <div class="rz-mb-4" style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <RadzenIcon Icon="inventory" Style="color: #64748B; font-size: 1.5rem;" />
+                                    <div>
+                                        <RadzenText TextStyle="TextStyle.Caption" Style="color: #64748B; margin: 0; font-weight: bold; letter-spacing: 0.5px;">STOCK ACTUAL</RadzenText>
+                                        <RadzenText TextStyle="TextStyle.H6" Style="@($"margin: 0; font-weight: 800; color: {(matSeleccionado.Stock <= matSeleccionado.StockMinimo ? "#DC2626" : "#1D9E75")}")">
+                                            @matSeleccionado.Stock
+                                        </RadzenText>
+                                    </div>
+                                </div>
+            
+                                <div style="text-align: right; border-left: 2px solid #E2E8F0; padding-left: 20px;">
+                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #94A3B8; margin: 0; font-weight: bold; letter-spacing: 0.5px;">STOCK MÍNIMO</RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" Style="margin: 0; font-weight: bold; color: #64748B;">
+                                        @matSeleccionado.StockMinimo
+                                    </RadzenText>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    <div class="step-header rz-mt-4">
+                        <RadzenIcon Icon="scale" Style="font-size: 1.5rem; color: #1F4E79; margin-right: 10px;" />
+                        <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title">Cantidad consumida</RadzenText>
+                    </div>
+
+                    <RadzenNumeric TValue="decimal" @bind-Value="cantidadConsumida"
+                                   Min="0.1m"
+                                   class="fuxa-modern-input numeric-center rz-mb-4" />
+
+                    <div class="rz-mb-4" style="display: flex; align-items: center; justify-content: space-between; background: #FFF1F2; padding: 10px 15px; border-radius: 8px; border: 1px solid #FECACA;">
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Style="margin: 0; color: #BE123C; font-weight: bold;">¿Es merma / desperdicio?</RadzenText>
+                        </div>
+                        <RadzenSwitch @bind-Value="esMerma" />
+                    </div>
+
+                    <RadzenButton Text="AÑADIR CONSUMO"
+                                  Icon="add_circle"
+                                  Click="GuardarMaterial"
+                                  Disabled="@(idMaterialSeleccionado == 0 || cantidadConsumida <= 0)"
+                                  class="btn-fuxa-success w-100" />
+                }
+            </div>
+        </RadzenColumn>
+
+        @* tabla de materiales imputados *@
+        <RadzenColumn Size="12" SizeMD="7">
+            <div class="fuxa-step-card h-100" style="background-color: #FFFFFF;">
+                <div class="step-header" style="border-bottom: 2px solid #E2E8F0; padding-bottom: 10px;">
+                    <RadzenIcon Icon="history" Style="font-size: 1.5rem; color: #64748B; margin-right: 10px;" />
+                    <RadzenText TextStyle="TextStyle.Subtitle1" class="step-title" Style="color: #64748B;">Materiales imputados</RadzenText>
+                </div>
+
+                @if (consumosActuales == null)
+                {
+                    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" class="rz-mt-4" />
+                }
+                else if (!consumosActuales.Any())
+                {
+                    <div class="empty-state-fuxa">
+                        <RadzenIcon Icon="inventory_2" Style="font-size: 3rem; color: #CBD5E1;" />
+                        <p>Aún no hay materiales registrados para esta operación.</p>
+                    </div>
+                }
+                else
+                {
+                    <RadzenDataGrid @ref="gridConsumos" Data="@consumosActuales" TItem="ImputacionMaterial"
+                                    AllowPaging="true" PageSize="5"
+                                    class="fuxa-custom-grid rz-mt-3">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.CodigoMaterial" Title="Código" Width="100px" />
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.Nombre" Title="Material">
+                                <Template Context="data">
+                                    <span style="font-weight: bold; color: #1A2E3F;">
+                                        @(data.Material?.Nombre ?? "Desconocido")
+                                    </span>
+                                    @if (data.EsMerma)
+                                    {
+                                        <span style="background-color: #EF4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: bold; vertical-align: middle;">
+                                            MERMA
+                                        </span>
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="100px">
+                                <Template Context="data">
+                                    <span style="color: black; font-weight: bold; font-size: 1.1rem;"><b>@data.Cantidad</b></span>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="FechaRegistro" Title="Fecha" Width="150px">
+                                <Template Context="data">
+                                    <span style="color: #64748B;">@data.FechaRegistro.ToString("dd/MM/yyyy HH:mm")</span>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Title="" Width="60px" TextAlign="TextAlign.Center">
+                                <Template Context="data">
+                                    <RadzenButton Icon="delete"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Variant="Variant.Flat"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => BorrarConsumo(data))" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </div>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <div class="fuxa-dialog-actions">
+        <RadzenButton Text="CERRAR VENTANA" Icon="done" Click="() => DialogService.Close()" class="btn-fuxa-outline" />
+    </div>
+</div>
+
+<style>
+    .fuxa-dialog-wrapper {
+        padding: 10px;
+        background: #FFFFFF;
+    }
+
+    .fuxa-step-card {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .step-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .step-title {
+        color: #1A2E3F;
+        font-weight: 700;
+        margin: 0 !important;
+    }
+
+    .fuxa-modern-input {
+        width: 100%;
+        height: 54px !important;
+        border-radius: 10px !important;
+        border: 2px solid #E2E8F0 !important;
+        background: #FFFFFF !important;
+        font-size: 1.1rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+        .fuxa-modern-input:focus {
+            border-color: #1F4E79 !important;
+            box-shadow: 0 0 0 4px rgba(31, 78, 121, 0.1) !important;
+        }
+
+    .numeric-center input {
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 1.5rem !important;
+        color: #1F4E79 !important;
+    }
+
+    .fuxa-dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #E2E8F0;
+    }
+
+    .btn-fuxa-outline {
+        background: transparent !important;
+        border: 2px solid #CBD5E1 !important;
+        color: #64748B !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 50px !important;
+        padding: 0 25px !important;
+    }
+
+        .btn-fuxa-outline:hover {
+            background: #F1F5F9 !important;
+            color: #1E293B !important;
+        }
+
+    .btn-fuxa-success {
+        background: #1D9E75 !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 50px !important;
+        padding: 0 25px !important;
+        color: white !important;
+    }
+
+        .btn-fuxa-success:hover {
+            background: #15805d !important;
+            transform: translateY(-1px);
+        }
+
+    .empty-state-fuxa {
+        text-align: center;
+        padding: 30px 10px;
+        color: #94A3B8;
+    }
+
+        .empty-state-fuxa p {
+            margin-top: 10px;
+            font-weight: 500;
+        }
+
+    .fuxa-custom-grid {
+        border: none !important;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+        .fuxa-custom-grid .rz-grid-table thead th {
+            background-color: #F1F5F9;
+            color: #475569;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        .fuxa-custom-grid .rz-grid-table td {
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+    .fuxa-delete-dialog {
+        border-radius: 16px !important;
+        border: 2px solid #FECACA !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        background-color: #FFFFFF !important;
+    }
+
+        .fuxa-delete-dialog .rz-dialog-titlebar {
+            background-color: #FFFFFF !important;
+            color: #EF4444 !important;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            padding: 20px 25px 10px 25px !important;
+            border-bottom: none !important;
+        }
+
+        .fuxa-delete-dialog .rz-dialog-title {
+            font-weight: 800 !important;
+            letter-spacing: 0.5px;
+            font-size: 1.3rem !important;
+            text-transform: uppercase;
+        }
+
+            .fuxa-delete-dialog .rz-dialog-title::before {
+                content: '⚠️';
+                margin-right: 10px;
+                font-size: 1.4rem;
+            }
+
+        .fuxa-delete-dialog .rz-dialog-titlebar-close {
+            color: #94A3B8 !important;
+            background: #F1F5F9 !important;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+        }
+
+        .fuxa-delete-dialog .rz-dialog-content {
+            padding: 20px 25px 30px 25px !important;
+            font-size: 1.2rem !important;
+            text-align: center;
+            color: #1E293B;
+            font-weight: 500;
+            background-color: #FFFFFF !important;
+        }
+
+        .fuxa-delete-dialog .rz-dialog-confirm-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 0px 25px 25px 25px !important;
+            background-color: #FFFFFF !important;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+        }
+
+            .fuxa-delete-dialog .rz-dialog-confirm-buttons .rz-button:first-child {
+                background-color: #EF4444 !important;
+                color: white !important;
+                border-radius: 12px !important;
+                font-weight: 700 !important;
+                padding: 0 30px !important;
+                height: 50px !important;
+                box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2) !important;
+                transition: all 0.2s;
+            }
+
+                .fuxa-delete-dialog .rz-dialog-confirm-buttons .rz-button:first-child:hover {
+                    background-color: #DC2626 !important;
+                    transform: translateY(-1px);
+                }
+
+            .fuxa-delete-dialog .rz-dialog-confirm-buttons .rz-button:last-child {
+                background-color: #FFFFFF !important;
+                border: 2px solid #E2E8F0 !important;
+                color: #64748B !important;
+                border-radius: 12px !important;
+                font-weight: 700 !important;
+                padding: 0 30px !important;
+                height: 50px !important;
+                transition: all 0.2s;
+            }
+
+                .fuxa-delete-dialog .rz-dialog-confirm-buttons .rz-button:last-child:hover {
+                    background-color: #F8FAFC !important;
+                    color: #1E293B !important;
+                    border-color: #CBD5E1 !important;
+                }
+</style>
+
+@code {
+    [Parameter] public int IdMaquina { get; set; }
+    [Parameter] public int IdOperacion { get; set; }
+    [Parameter] public int IdEmpleado { get; set; }
+
+    private List<Material> materialesDisponibles;
+    private List<ImputacionMaterial> consumosActuales;
+    private RadzenDataGrid<ImputacionMaterial> gridConsumos;
+
+    private int idMaterialSeleccionado;
+    private decimal cantidadConsumida = 1m;
+    private bool esMerma = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        materialesDisponibles = await ImputacionService.ObtenerMaterialesPermitidosAsync(IdOperacion);
+
+        consumosActuales = await ImputacionService.ObtenerConsumosPorOperacionAsync(IdOperacion);
+    }
+
+    private async Task GuardarMaterial()
+    {
+        bool restaCorrecta = await ImputacionService.RestadoStockAsync(idMaterialSeleccionado, cantidadConsumida);
+        if (!restaCorrecta)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "La cantidad imputada es superior al stock");
+            return;
+        }
+
+        bool exito = await ImputacionService.RegistrarConsumoMaterialAsync(IdOperacion, idMaterialSeleccionado, cantidadConsumida, IdEmpleado, esMerma);
+
+        if (exito)
+        {
+            bool stockMinimoBool = await ImputacionService.StockMinimoAsync(idMaterialSeleccionado, cantidadConsumida);
+
+            if (stockMinimoBool)
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Aviso", "El material ha alcanzado el stock mínimo");
+            }
+
+            NotificationService.Notify(NotificationSeverity.Success, "Añadido", "Material registrado correctamente.");
+
+            await CargarDatos();
+
+            idMaterialSeleccionado = 0;
+            cantidadConsumida = 1;
+            esMerma = false;
+
+            if (gridConsumos != null)
+            {
+                await gridConsumos.Reload();
+            }
+            StateHasChanged();
+        }
+        else
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo registrar el material.");
+            esMerma = false;
+        }
+    }
+
+    private async Task BorrarConsumo(ImputacionMaterial consumo)
+    {
+        var confirmacion = await DialogService.Confirm(
+            $"¿Seguro que quieres borrar el consumo de {consumo.Cantidad} {consumo.Material?.Nombre}?",
+            "Confirmar borrado",
+
+            new ConfirmOptions()
+            {
+                OkButtonText = "Sí, borrar",
+                CancelButtonText = "No, cancelar",
+                CssClass = "fuxa-delete-dialog"
+            });
+        if (confirmacion == true)
+        {
+            bool exito = await ImputacionService.EliminarConsumoAsync(consumo.Id);
+
+            if (exito)
+            {
+                consumosActuales.Remove(consumo);
+
+                if (gridConsumos != null)
+                {
+                    await gridConsumos.Reload();
+                }
+                StateHasChanged();
+                NotificationService.Notify(NotificationSeverity.Success, "Borrado", "El consumo se ha eliminado y el stock se ha devuelto");
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo eliminar el registro");
+            }
+        }
+    }
+}

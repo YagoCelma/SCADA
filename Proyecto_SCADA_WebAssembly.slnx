@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="SCADA.Api/SCADA.Api.csproj" />
+  <Project Path="SCADA.Cliente/SCADA.Cliente.csproj" />
+  <Project Path="SCADA.Modelos/SCADA.Modelos.csproj" />
+</Solution>

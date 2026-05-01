@@ -1,0 +1,49 @@
+@page "/ciclos-maquina/{maquinaId:int}"
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+
+@inject ServicioMaquina MachineService
+@inject NavigationManager Navigation
+
+<h3>Registrar ciclos de máquina</h3>
+
+@if (maquina == null)
+{
+    <p>Cargando máquina...</p>
+}
+else
+{
+    <div style="border-radius: 5px; border:1px solid #ccc;padding:20px;width:400px">
+        <p><b>Máquina:</b> @maquina.Nombre</p>
+        <p><b>Sección:</b> @maquina.Seccion.Nombre</p>
+        <p><b>Objetivo ciclos:</b> @maquina.CiclosObjetivo</p>
+
+        <hr />
+
+        <label>Ciclos reales:</label>
+        <input type="number" class="form-control" @bind="realCycles" />
+
+        <br />
+
+        <button class="btn btn-primary" @onclick="Guardar">Registrar ciclos</button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int maquinaId { get; set; }
+
+    private Maquina? maquina;
+    private int realCycles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        maquina = await MachineService.GetByIdAsync(maquinaId);
+    }
+
+    private async Task Guardar()
+    {
+        await MachineService.AddCycleAsync(maquinaId, realCycles);
+        Navigation.NavigateTo($"/dashboard-maquina/{maquinaId}");
+    }
+}

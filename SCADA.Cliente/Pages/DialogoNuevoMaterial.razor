@@ -1,0 +1,104 @@
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject ImputacionService ImputacionService
+
+<RadzenStack Gap="1.5rem" class="rz-p-4">
+
+    <RadzenStack Gap="1rem">
+
+        @* Nombre del Material *@
+        <RadzenStack Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Nombre del materia</RadzenText>
+            <RadzenTextBox @bind-Value="MaterialParaEditar.Nombre" class="w-100" />
+        </RadzenStack>
+
+        @* Código del Material *@
+        <RadzenStack Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Código / Referencia></RadzenText>
+            <RadzenTextBox @bind-Value="MaterialParaEditar.CodigoMaterial" class="w-100" />
+        </RadzenStack>
+
+        @* Descripción *@
+        <RadzenStack Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Descripción (Opcional)</RadzenText>
+            <RadzenTextArea @bind-Value="MaterialParaEditar.Descripcion" class="w-100" Rows="3" />
+        </RadzenStack>
+
+        @* Stocks *@
+        <RadzenRow>
+            <RadzenColumn Size="6">
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Stock Inicial</RadzenText>
+                    <RadzenNumeric @bind-Value="MaterialParaEditar.Stock" class="w-100" TValue="decimal" />
+                </RadzenStack>
+            </RadzenColumn>
+
+            <RadzenColumn Size="6">
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-m-0">Stock Mínimo</RadzenText>
+                    <RadzenNumeric @bind-Value="MaterialParaEditar.StockMinimo" class="w-100" TValue="decimal" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+    </RadzenStack>
+
+    @* Botones de Acción *@
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" class="rz-mt-4">
+        <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="Guardar Material" Icon="save" Click="Guardar" ButtonStyle="ButtonStyle.Primary" />
+    </RadzenStack>
+
+</RadzenStack>
+
+@code {
+    [Parameter] public Material MaterialParaEditar { get; set; }
+
+    private async Task Guardar()
+    {
+        //var materiales = ImputacionServices.ObtenerMaterialesAsync();
+
+        if (string.IsNullOrWhiteSpace(MaterialParaEditar.Nombre))
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "El Nombre no puede quedar vacío");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MaterialParaEditar.CodigoMaterial))
+        {
+            MaterialParaEditar.CodigoMaterial = await ImputacionService.GenerarCodigoMaterial(MaterialParaEditar.Nombre);
+        }
+
+
+        if (MaterialParaEditar.Stock < 0 || MaterialParaEditar.StockMinimo < 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "El stock no puede ser negativo");
+            return;
+        }
+
+        try
+        {
+
+            bool exito = await ImputacionService.GuardarMaterialAsync(MaterialParaEditar);
+
+            if (exito)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Material guardado correctamente");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo guardar el material en la base de datos");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Fallo al guardar: " + ex.Message);
+        }
+    }
+}

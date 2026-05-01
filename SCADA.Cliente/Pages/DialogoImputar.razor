@@ -1,0 +1,320 @@
+﻿@using SCADA.Modelos
+@using Radzen
+@using Radzen.Blazor
+
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject SCADA.Cliente.Services.ImputacionService ImputacionService
+
+<RadzenStack Gap="1rem" class="rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6">Imputar horas y materiales</RadzenText>
+
+    @if (OperacionActiva == null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="false" Variant="Variant.Flat">
+            No hay una operación activa en esta máquina para imputar.
+        </RadzenAlert>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+            <RadzenButton Text="Cerrar" Click="() => DialogService.Close()" ButtonStyle="ButtonStyle.Light" />
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenStack Gap="0.5rem" class="rz-mb-2">
+            <RadzenText TextStyle="TextStyle.Caption">Operación actual:</RadzenText>
+            <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="@OperacionActiva.CodigoOperacion" />
+        </RadzenStack>
+
+        <RadzenTabs RenderMode="TabRenderMode.Client">
+            <Tabs>
+                @* ventana operarios *@
+                <RadzenTabsItem Text="Horas Operario" Icon="schedule">
+                    <RadzenStack Gap="1rem" class="rz-mt-4">
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle2">Seleccionar operario</RadzenText>
+                            <RadzenDropDown @bind-Value="nuevaImp.IdEmpleado" Data="@ListaOperarios" ValueProperty="Id" class="w-100"
+                                            AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+                                <Template Context="emp">
+                                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                                        <span>@emp.Nombre @emp.Apellidos</span>
+                                        <span style="font-size: 0.8rem; color: gray;">(@emp.CodigoEmpleado)</span>
+                                    </div>
+                                </Template>
+                                <ValueTemplate Context="emp">
+                                    @($"{emp.Nombre} {emp.Apellidos} ({emp.CodigoEmpleado})")
+                                </ValueTemplate>
+                            </RadzenDropDown>
+                        </RadzenStack>
+                        @* observaciones *@
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle2">Observaciones</RadzenText>
+                            <RadzenTextArea @bind-Value="nuevaImp.Observaciones" class="w-100" />
+                        </RadzenStack>
+
+                        @* horas *@
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle2">Horas de trabajo</RadzenText>
+                            <RadzenRow>
+                                <RadzenColumn Size="6">
+                                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-base-500">Hora inicio</RadzenText>
+                                    <RadzenDatePicker @bind-Value="horaInicio" ShowTime="true" TimeOnly="true" DateFormat="HH:mm" class="w-100" />
+                                </RadzenColumn>
+                                <RadzenColumn Size="6">
+                                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-base-500">Hora fin</RadzenText>
+                                    <RadzenDatePicker @bind-Value="horaFin" ShowTime="true" TimeOnly="true" DateFormat="HH:mm" class="w-100" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+
+                        <RadzenStack class="rz-color-base-500">Horas: @CalcularHorasEnTiempoReal()</RadzenStack>
+
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle2">Fecha de realización</RadzenText>
+                            <RadzenDatePicker @bind-Value="nuevaImp.FechaRegistro" DateFormat="dd/MM/yyyy" Class="w-100" ShowTime="false" />
+                        </RadzenStack>
+
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                            <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                            <RadzenButton Text="Guardar Horas" Icon="save" Click="GuardarHoras" ButtonStyle="ButtonStyle.Primary" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                @* ventana materiales *@
+                <RadzenTabsItem Text="Materiales" Icon="inventory_2">
+                    <RadzenStack Gap="1rem" class="rz-mt-4">
+
+                        @* elegir material *@
+                        <RadzenRow>
+                            <RadzenColumn Size="7">
+                                <RadzenStack Gap="0.5rem">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2">Seleccionar material</RadzenText>
+                                    <RadzenDropDown @bind-Value="nuevaImpMat.IdMaterial" Data="@ListaMateriales" ValueProperty="Id" class="w-100"
+                                                    AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+                                        <Template Context="mat">
+                                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                                <span>@mat.Nombre</span>
+                                                <span style="font-size: 0.8rem; color: gray;">
+                                                    Stock: @mat.Stock | Cod: @mat.CodigoMaterial
+                                                </span>
+                                            </div>
+                                        </Template>
+                                        <ValueTemplate Context="mat">
+                                            @($"{mat.Nombre} ({mat.CodigoMaterial})")
+                                        </ValueTemplate>
+                                    </RadzenDropDown>
+                                </RadzenStack>
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="5">
+                                <RadzenStack Gap="0.5rem">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2">Cantidad</RadzenText>
+                                    <RadzenNumeric @bind-Value="nuevaImpMat.Cantidad" TValue="decimal" Step="1" class="w-100" />
+                                </RadzenStack>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        <RadzenStack Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Subtitle2">Observaciones</RadzenText>
+                            <RadzenTextArea @bind-Value="nuevaImpMat.Observaciones" class="w-100" Rows="2" />
+                        </RadzenStack>
+
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+                            <RadzenButton Text="Añadir a la lista" Icon="add" Click="AñadirMaterialALaLista" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" />
+                        </RadzenStack>
+
+                        <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;" />
+
+                        @* tabla materiales *@
+                        <RadzenText TextStyle="TextStyle.Subtitle2">Lista de materiales a guardar:</RadzenText>
+
+                        @if (!listaMaterialesAImputar.Any())
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Text" ShowIcon="false" class="rz-p-2 rz-m-0">
+                                Aún no has añadido ningún material.
+                            </RadzenAlert>
+                        }
+                        else
+                        {
+                            <RadzenDataGrid Data="@listaMaterialesAImputar" TItem="ImputacionMaterial" AllowPaging="false">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Material">
+                                        <Template Context="mat">
+                                            @* buscamos el material *@
+                                            @(ListaMateriales?.FirstOrDefault(m => m.Id == mat.IdMaterial)?.Nombre ?? "Desconocido")
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="80px" />
+                                    <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Quitar" Width="70px" TextAlign="TextAlign.Center">
+                                        <Template Context="mat">
+                                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Small" Click="() => QuitarMaterial(mat)" />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+
+                        @* botones abajo *@
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="rz-mt-4">
+                            <RadzenButton Text="Cancelar" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                            <RadzenButton Text="Guardar Todos" Icon="save" Click="GuardarTodosLosMateriales" ButtonStyle="ButtonStyle.Primary" Disabled="@(!listaMaterialesAImputar.Any())" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public dynamic OperacionActiva { get; set; }
+    [Parameter] public List<Empleado> ListaOperarios { get; set; }
+    [Parameter] public List<Material> ListaMateriales { get; set; }
+
+    ImputacionOperario nuevaImp = new ImputacionOperario();
+    ImputacionMaterial nuevaImpMat = new ImputacionMaterial();
+
+    DateTime? horaInicio;
+    DateTime? horaFin;
+
+    private List<ImputacionMaterial> listaMaterialesAImputar = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        if (ListaMateriales == null || !ListaMateriales.Any())
+        {
+            await CargarMateriales();
+        }
+    }
+
+    private async Task CargarMateriales()
+    {
+        ListaMateriales = await ImputacionService.ObtenerMaterialesAsync();
+    }
+
+    private string CalcularHorasEnTiempoReal()
+    {
+        if (!horaInicio.HasValue || !horaFin.HasValue)
+        {
+            return "0h 0m";
+        }
+
+        TimeSpan diferencia = horaFin.Value - horaInicio.Value;
+
+        if (diferencia.TotalHours < 0)
+        {
+            diferencia = diferencia.Add(TimeSpan.FromHours(24));
+        }
+
+        int horas = (int)diferencia.TotalHours;
+        int minutos = diferencia.Minutes;
+
+        return $"{horas}h {minutos}m";
+    }
+
+    private async Task GuardarHoras()
+    {
+        if (!horaInicio.HasValue || !horaFin.HasValue)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Debes seleccionar las horas de inicio y fin");
+            return;
+        }
+
+        TimeSpan diferencia = horaFin.Value - horaInicio.Value;
+
+        if (diferencia.TotalHours < 0)
+        {
+            diferencia = diferencia.Add(TimeSpan.FromHours(24));
+        }
+
+        nuevaImp.Horas = (decimal)diferencia.TotalHours;
+
+        if (nuevaImp.FechaRegistro == default(DateTime))
+        {
+            nuevaImp.FechaRegistro = DateTime.Now;
+        }
+
+        DateTime diaElegido = nuevaImp.FechaRegistro.Date;
+
+        nuevaImp.FechaInicio = diaElegido.Add(horaInicio.Value.TimeOfDay);
+        nuevaImp.FechaFin = diaElegido.Add(horaFin.Value.TimeOfDay);
+
+        nuevaImp.IdOperacion = OperacionActiva.Id;
+
+        try
+        {
+            var exito = await ImputacionService.InsertarImputacionOperario(nuevaImp);
+
+            if (exito)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Horas guardadas correctamente");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo guardar las horas");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Fallo al guardar: " + ex.Message);
+        }
+    }
+
+
+    private void AñadirMaterialALaLista()
+    {
+        if (nuevaImpMat.IdMaterial == 0 || nuevaImpMat.Cantidad <= 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "Selecciona un material y una cantidad válida");
+            return;
+        }
+
+        listaMaterialesAImputar.Add(new ImputacionMaterial
+        {
+            IdOperacion = nuevaImpMat.IdOperacion,
+            IdMaterial = nuevaImpMat.IdMaterial,
+            Cantidad = nuevaImpMat.Cantidad,
+            Observaciones = nuevaImpMat.Observaciones,
+            FechaRegistro = nuevaImpMat.FechaRegistro
+        });
+
+        nuevaImpMat = new ImputacionMaterial
+        {
+            IdOperacion = OperacionActiva.Id,
+            FechaRegistro = DateTime.Now
+        };
+    }
+
+    private void QuitarMaterial(ImputacionMaterial mat)
+    {
+        listaMaterialesAImputar.Remove(mat);
+    }
+
+    private async Task GuardarTodosLosMateriales()
+    {
+        if (!listaMaterialesAImputar.Any()) return;
+
+        try
+        {
+
+            bool exito = await ImputacionService.GuardarMultiplesMaterialesAsync(listaMaterialesAImputar);
+
+
+            if (exito)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Éxito", "Todos los materiales han sido guardados");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "Hubo un error al guardar los materiales");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "Fallo al guardar: " + ex.Message);
+        }
+    }
+}

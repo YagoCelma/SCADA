@@ -1,0 +1,98 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using SCADA.Cliente.Services
+@using SCADA.Modelos
+
+@inject Radzen.DialogService DialogService
+@inject ServicioEmpleado ServicioEmpleado
+
+@if (Datos == null)
+{
+    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <RadzenStack Gap="1.5rem" Class="rz-p-4">
+        <RadzenAlert AllowClose="false" AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+            Configurando personal para: <b>@Datos.NombreMaquina</b> (@Datos.NombreSeccion)
+        </RadzenAlert>
+
+        <RadzenFieldset Text="Detalles de Asignación">
+            <RadzenStack Gap="1rem">
+                <div>
+                    <RadzenText TextStyle="TextStyle.Caption">Seleccionar Trabajador</RadzenText>
+                    <RadzenDropDown @bind-Value="Datos.EmpleadoId" Data="@empleados"
+                                    TextProperty="Nombre" ValueProperty="Id"
+                                    Placeholder="Seleccione un empleado..." Style="width: 100%;" />
+                </div>
+
+                <div>
+                    <RadzenText TextStyle="TextStyle.Caption">Cargo</RadzenText>
+                    <RadzenSelectBar @bind-Value="Datos.Cargo" TValue="string" Class="rz-width-100">
+                        <Items>
+                            <RadzenSelectBarItem Text="Encargado" Value="@("Encargado")" />
+                            <RadzenSelectBarItem Text="Operario" Value="@("Operario")" />
+                        </Items>
+                    </RadzenSelectBar>
+                </div>
+            </RadzenStack>
+        </RadzenFieldset>
+
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false">
+                @mensajeError
+            </RadzenAlert>
+        }
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Click="@((args) => DialogService.Close(false))" Text="Cancelar" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Click="Guardar" Text="Guardar Cambios" ButtonStyle="ButtonStyle.Primary" />
+        </RadzenStack>
+    </RadzenStack>
+}
+
+@code {
+    [Parameter] public AsignarTrabajador? Datos { get; set; }
+    List<Empleado> empleados = new();
+    string mensajeError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        empleados = await ServicioEmpleado.GetAllEmpleadosAsync();
+    }
+
+    async Task Guardar()
+    {
+        mensajeError = "";
+
+        if (Datos == null) return;
+
+        if (Datos.EmpleadoId <= 0)
+        {
+            mensajeError = "¡Atención! Debes seleccionar un trabajador de la lista antes de guardar.";
+            return;
+        }
+
+        try
+        {
+            var emp = empleados.FirstOrDefault(e => e.Id == Datos.EmpleadoId);
+            if (emp != null)
+            {
+                emp.Cargo = Datos.Cargo;
+                await ServicioEmpleado.UpdateEmpleadoAsync(emp);
+            }
+
+            if (Datos.MaquinaId > 0)
+            {
+                await ServicioEmpleado.AsignarEmpleadoAMaquinaAsync(Datos.MaquinaId, Datos.EmpleadoId.Value);
+            }
+
+            DialogService.Close(true);
+        }
+        catch (Exception ex)
+        {
+            mensajeError = "Se ha producido un error al guardar los cambios: " + ex.Message;
+        }
+    }
+}

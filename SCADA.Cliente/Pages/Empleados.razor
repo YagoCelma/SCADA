@@ -1,0 +1,205 @@
+﻿@page "/empleados"
+@using SCADA.Modelos
+@using SCADA.Cliente.Services
+@using Radzen.Blazor
+@using Radzen
+
+@inject ServicioEmpleado ServicioEmpleado
+@inject DialogService DialogService
+
+<div class="fuxa-enterprise-container">
+    <RadzenStack Gap="1.5rem">
+
+        @* CABECERA *@
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenStack Gap="0">
+                    <RadzenText TextStyle="TextStyle.H4" TagName="TagName.H1" class="ent-title">
+                        Gestión de Personal
+                    </RadzenText>
+                    <div class="ent-title-underline"></div>
+                </RadzenStack>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="1rem">
+                    <RadzenButton Text="NUEVO EMPLEADO"
+                                  Icon="person_add"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Click="@InsertarFila"
+                                  class="ent-btn-solid" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* tabla *@
+        <div class="ent-grid-wrapper">
+            <RadzenDataGrid @ref="empleadosGrid" Data="@empleados" TItem="Empleado"
+                            RowUpdate="@GuardarFila" RowCreate="@GuardarFila"
+                            AllowPaging="true" PageSize="10" EditMode="DataGridEditMode.Single"
+                            class="ent-datagrid">
+                <Columns>
+                    @* nombre *@
+                    <RadzenDataGridColumn TItem="Empleado" Property="Nombre" Title="NOMBRE">
+                        <Template Context="e">
+                            <strong>@e.Nombre</strong>
+                        </Template>
+                        <EditTemplate Context="e">
+                            <RadzenTextBox @bind-Value="e.Nombre" Name="Nombre" class="ent-input w-100" Style="display: block;" />
+                            <RadzenRequiredValidator Component="Nombre" Text="El nombre no puede estar vacío"
+                                                     Popup="false" Style="position: absolute; color: #DC2626; font-size: 0.8rem; font-weight: bold;" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+
+                    @* apellidos *@
+                    <RadzenDataGridColumn TItem="Empleado" Property="Apellidos" Title="APELLIDOS">
+                        <EditTemplate Context="e">
+                            <RadzenTextBox @bind-Value="e.Apellidos" Name="Apellidos" class="ent-input w-100" Style="display: block;" />
+                            <RadzenRequiredValidator Component="Apellidos" Text="Los apellidos no pueden estar vacíos"
+                                                     Popup="false" Style="position: absolute; color: #DC2626; font-size: 0.8rem; font-weight: bold;" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+
+                    @* cargo *@
+                    <RadzenDataGridColumn TItem="Empleado" Property="Cargo" Title="CARGO" Width="180px">
+                        <Template Context="e">
+                            @if (e.Cargo == "Encargado")
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Text="ENCARGADO" class="ent-badge" Style="background-color: #1F4E79;" />
+                            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="OPERARIO" class="ent-badge" Style="color: #4A5568; border: 1px solid #CBD5E1;" />
+                            }
+                        </Template>
+                        <EditTemplate Context="e">
+                            <RadzenDropDown @bind-Value="e.Cargo" Data="@cargos" class="ent-input w-100" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="Empleado" Property="CodigoEmpleado" Title="CODIGO EMPLEADO" >
+                        <Template Context="e">
+                            <strong>@e.CodigoEmpleado</strong>
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    @* editar y borrar *@
+                    <RadzenDataGridColumn TItem="Empleado" Title="EDITAR" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="90px">
+                        <Template Context="e">
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Text" Size="ButtonSize.Medium" class="ent-action-btn" Click="@(args => EditarFila(e))" />
+                        </Template>
+                        <EditTemplate Context="e">
+                            <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Text" Size="ButtonSize.Medium" Style="color: #16A34A;" Click="@((args) => empleadosGrid.UpdateRow(e))" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="Empleado" Title="BORRAR" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="90px">
+                        <Template Context="e">
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Size="ButtonSize.Medium" Style="color: #DC2626;" Click="@(args => BorrarFila(e))" />
+                        </Template>
+                        <EditTemplate Context="e">
+                            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Text" Size="ButtonSize.Medium" Style="color: #64748B;" Click="@((args) => CancelarEdicion(e))" />
+                        </EditTemplate>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    </RadzenStack>
+</div>
+
+<style>
+    .fuxa-enterprise-container { background-color: #FAFAFA; min-height: 100vh; padding: 2rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .ent-title { color: #1A2E3F; font-weight: 800 !important; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+    .ent-title-underline { height: 4px; width: 60px; background-color: #1F4E79; margin-top: 5px; }
+    .ent-grid-wrapper { border: 1px solid #D5E3EF; background: white; border-radius: 4px; overflow: hidden; min-height: 600px; }
+    .ent-datagrid { border: none !important; height: 100% !important; }
+    .ent-datagrid .rz-datagrid-header-cell { background-color: #1A2E3F !important; color: #FFFFFF !important; font-weight: 600 !important; font-size: 0.85rem !important; letter-spacing: 0.5px; border-bottom: 3px solid #1F4E79 !important; padding: 12px 15px !important; text-transform: uppercase; }
+    .ent-datagrid .rz-datagrid-header-cell .rz-sortable-column-icon { color: #7BB3D4 !important; }
+    .ent-datagrid .rz-datagrid-row td { border-bottom: 1px solid #EEEEEE !important; padding: 12px 15px !important; color: #333333 !important; font-size: 0.95rem; }
+    .ent-datagrid .rz-datagrid-row:nth-child(even) > td { background-color: #F8F9FA !important; }
+    .ent-datagrid .rz-datagrid-row:hover td { background-color: #E6F2FF !important; }
+    .ent-datagrid .rz-datagrid-row.rz-state-highlight td { background-color: #FFFDE7 !important; }
+    .ent-badge { border-radius: 4px !important; padding: 6px 12px !important; font-weight: bold !important; letter-spacing: 0.5px; font-size: 0.8rem; }
+    .ent-input { border-radius: 4px !important; border: 1px solid #CBD5E1 !important; background-color: white !important; font-family: inherit; }
+    .ent-input:focus { border-color: #1F4E79 !important; box-shadow: 0 0 0 2px rgba(31,78,121,0.2) !important; outline: none; }
+    .ent-btn-solid { background-color: #1F4E79 !important; border-radius: 4px !important; font-weight: 600 !important; box-shadow: none !important; }
+    .ent-btn-solid:hover { background-color: #163857 !important; }
+    .ent-action-btn { color: #1F4E79 !important; background: transparent !important; font-size: 1.2rem !important; }
+    .ent-action-btn:hover { background: #E6F2FF !important; transform: scale(1.1); }
+</style>
+
+@code {
+    RadzenDataGrid<Empleado>? empleadosGrid;
+    List<Empleado> empleados = new();
+    List<Empleado> encargados = new();
+    List<string> cargos = new() { "Encargado", "Operario" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    async Task CargarDatos()
+    {
+        // Llamada actualizada al nuevo servicio
+        empleados = await ServicioEmpleado.GetAllEmpleadosAsync();
+    }
+
+    async Task InsertarFila()
+    {
+        var nuevo = new Empleado
+        {
+            Nombre = "",
+            Apellidos = "",
+            CodigoEmpleado = "EMP-" + DateTime.Now.ToString("ssfff"),
+            Cargo = "Operario",
+            EstaActivo = true
+        };
+
+        await empleadosGrid.InsertRow(nuevo);
+    }
+
+    async Task GuardarFila(Empleado e)
+    {
+        try
+        {
+            if (e.Id == 0)
+            {
+                await ServicioEmpleado.AddEmpleadoAsync(e);
+            }
+            else
+            {
+                await ServicioEmpleado.UpdateEmpleadoAsync(e);
+            }
+
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR: {ex.Message}");
+            empleadosGrid.CancelEditRow(e);
+        }
+    }
+
+    async Task BorrarFila(Empleado e)
+    {
+        if (e.Id == 0)
+        {
+            empleados.Remove(e);
+            await empleadosGrid.Reload();
+        }
+        else
+        {
+            await ServicioEmpleado.DeleteEmpleadoAsync(e);
+            await CargarDatos();
+        }
+    }
+
+    void EditarFila(Empleado e) => empleadosGrid.EditRow(e);
+    void CancelarEdicion(Empleado e) => empleadosGrid.CancelEditRow(e);
+
+    private async Task AbrirGestionMaquinas(Empleado empleado)
+    {
+        Console.WriteLine($"Abriendo gestión de máquinas para: {empleado.Nombre}");
+    }
+}
