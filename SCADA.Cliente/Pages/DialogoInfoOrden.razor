@@ -83,7 +83,10 @@
                                         double horasFila = 0;
                                         if (op.Imputaciones != null)
                                         {
-                                            horasFila += op.Imputaciones.Where(i => i.FechaFin != null).Sum(i => (double)i.Horas);
+                                            horasFila += op.Imputaciones
+                                            .Where(i => i.FechaFin != null && i.FechaInicio != null)
+                                            .Sum(i => (i.FechaFin.Value - i.FechaInicio.Value).TotalHours);
+
                                             var activo = op.Imputaciones.FirstOrDefault(i => i.FechaFin == null);
                                             if (activo != null && activo.FechaInicio.HasValue)
                                                 horasFila += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
@@ -213,15 +216,15 @@
                 .Where(i => i.FechaFin != null && i.FechaInicio != null)
                 .Sum(i => (i.FechaFin.Value - i.FechaInicio.Value).TotalHours);
 
-                // var tramosActivos = operacion.Imputaciones.Where(i => i.FechaFin == null);
+                var tramosActivos = operacion.Imputaciones.Where(i => i.FechaFin == null);
 
-                // foreach (var activo in tramosActivos)
-                // {
-                //     if (activo.FechaInicio.HasValue)
-                //     {
-                //         horasRealesTotales += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
-                //     }
-                // }
+                foreach (var activo in tramosActivos)
+                {
+                    if (activo.FechaInicio.HasValue)
+                    {
+                        horasRealesTotales += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
+                    }
+                }
             }
         }
         tiempoTotalReal = TimeSpan.FromHours(horasRealesTotales);

@@ -1018,6 +1018,20 @@ namespace SCADA.Api.Controllers
             return Ok(ordenes);
         }
 
+        [HttpDelete("fichaje/abierto/{idOperacion}/{idEmpleado}")]
+        public async Task<IActionResult> EliminarFichajeAbiertoAsync(int idOperacion, int idEmpleado)
+        {
+            var fichajeBorrar = await _context.ImputacionesOperarios.FirstOrDefaultAsync(i => i.IdOperacion == idOperacion && i.IdEmpleado == idEmpleado && i.FechaFin == null);
+
+            if(fichajeBorrar != null)
+            {
+                _context.ImputacionesOperarios.Remove(fichajeBorrar);
+                await _context.SaveChangesAsync();
+                return Ok(true);
+            }
+            return Ok(false);
+        }
+
         public class CierreOperacionRequest
         {
             public int Id { get; set; }

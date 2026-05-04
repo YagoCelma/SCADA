@@ -24,7 +24,7 @@
             <div class="clock-big">@currentTime</div>
         </div>
         <div class="topbar-right">
-            <RadzenButton Click="@(() => NavManager.NavigateTo("/terminal-operario-seleccion"))"
+            <RadzenButton Click="@CambiarOperario"
                           Icon="arrow_back" Text="CAMBIAR OPERARIO" ButtonStyle="ButtonStyle.Light" Variant="Variant.Text" />
         </div>
     </div>
@@ -551,6 +551,49 @@
             timer.Stop();
             timer.Dispose();
             timer = null;
+        }
+    }
+
+    private async Task CambiarOperario()
+    {
+        if(pasoActual == 3)
+        {
+            var respuesta = await DialogService.OpenAsync<DialogoCambioOperario>("Atención",
+
+                new Dictionary<string, object?>
+                {
+                    {"IdMaquina", idMaquinaNula},
+                    {"IdOperacion", ordenSeleccionada.Id},
+                    {"IdEmpleado", operarioSeleccionado.Id}
+                },
+
+                new DialogOptions() { Width = "700px", Resizable= false, Draggable = true, Style = "border-radius: 16px;" }
+            );
+
+            if(respuesta is bool decision)
+            {
+                if(respuesta == true)
+                {
+                    await ImputacionService.ImputarTrabajoDesdeTerminalAsync(
+                        ordenSeleccionada.Id, idMaquinaNula, operarioSeleccionado.Id, horaInicioProceso, DateTime.Now, piezasFabricadas, piezasRotas);
+
+                    isDisposed = true;
+                    if(timer != null) timer.Stop();
+                    NavManager.NavigateTo("/terminal-operario-seleccion");
+
+                }else if(respuesta == false)
+                {
+                    await ImputacionService.EliminarFichajeAbiertoAsync(ordenSeleccionada.Id, operarioSeleccionado.Id);
+
+                    isDisposed = true;
+                    if(timer != null) timer.Stop();
+                    NavManager.NavigateTo("/terminal-operario-seleccion");
+                }
+            }
+        }
+        else
+        {
+            NavManager.NavigateTo("/terminal-operario-seleccion");
         }
     }
 }

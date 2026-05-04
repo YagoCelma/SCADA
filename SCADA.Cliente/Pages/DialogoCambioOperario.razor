@@ -1,0 +1,56 @@
+﻿@inject DialogService DialogService
+
+<RadzenStack Gap="1.5rem" class="rz-p-2">
+    
+    @* Cabecera *@
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+        <RadzenIcon Icon="warning_amber" Style="font-size: 3.5rem; color: #EF9F27;" />
+        <RadzenText TextStyle="TextStyle.H6" Style="margin: 0; color: #1A2E3F; font-weight: 900; letter-spacing: 0.5px;">
+            ¡ATENCIÓN! CRONÓMETRO ACTIVO
+        </RadzenText>
+    </RadzenStack>
+
+    @* mensaje explicativo *@
+    <RadzenText TextStyle="TextStyle.Body1" Style="color: #4A5568; font-size: 1.1rem; line-height: 1.5;">
+        Tienes una tarea en curso en este momento. Para cambiar de operario, primero debes indicar qué quieres hacer con el tiempo que ha transcurrido hasta ahora:
+    </RadzenText>
+
+    @* botones *@
+    <RadzenStack Orientation="Orientation.Vertical" Gap="1rem" class="rz-mt-2">
+        
+        @* guardar *@
+        <RadzenButton Text="GUARDAR TURNO Y SALIR"
+                      Icon="save"
+                      ButtonStyle="ButtonStyle.Success"
+                      Size="ButtonSize.Large"
+                      Click="() => DialogService.Close(true)"
+                      Style="width: 100%; font-weight: bold; border-radius: 8px; height: 60px; font-size: 1.1rem;" />
+
+        @* descartar *@
+        <RadzenButton Text="BORRAR ESTE REGISTRO Y SALIR"
+                      Icon="delete_forever"
+                      ButtonStyle="ButtonStyle.Danger"
+                      Size="ButtonSize.Large"
+                      Click="() => DialogService.Close(false)"
+                      Style="width: 100%; font-weight: bold; border-radius: 8px; height: 60px; font-size: 1.1rem;" />
+
+        @* divisor *@
+        <hr style="border: none; border-top: 1px solid #D5E3EF; margin: 0.5rem 0;" />
+
+        @* cancelar *@
+        <RadzenButton Text="CANCELAR (Me quedo en esta pantalla)"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Medium"
+                      Click="() => DialogService.Close(null)"
+                      Style="width: 100%; font-weight: 600; border-radius: 8px; color: #4A5568; height: 50px;" />
+
+    </RadzenStack>
+</RadzenStack>
+@code {
+
+    [Parameter] public int IdMaquina { get; set; }
+    [Parameter] public int IdOperacion { get; set; }
+    [Parameter] public int IdEmpleado { get; set; }
+
+}

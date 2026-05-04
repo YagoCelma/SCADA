@@ -323,5 +323,11 @@ namespace SCADA.Cliente.Services
         {
             return await _http.GetFromJsonAsync<List<Orden>>("api/imputaciones/orden/progreso") ?? new List<Orden>();
         }
+
+        public async Task <bool> EliminarFichajeAbiertoAsync(int idOperacion, int idEmpleado)
+        {
+            var respuesta = await _http.DeleteAsync($"api/imputaciones/fichaje/abierto/{idOperacion}/{idEmpleado}");
+            return await respuesta.Content.ReadFromJsonAsync<bool>();
+        }
     }
 }
