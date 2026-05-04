@@ -458,17 +458,30 @@ namespace SCADA.Api.Controllers
                     maq.FechaActualizacion = DateTime.Now;
                 }
 
-                _context.ImputacionesOperarios.Add(new ImputacionOperario
+                var imputacionAbierta = await _context.ImputacionesOperarios.FirstOrDefaultAsync(i => i.IdOperacion == req.IdOperacion
+                    && i.IdEmpleado == req.IdEmpleado && i.FechaFin == null);
+
+                if(imputacionAbierta != null){
+
+                    imputacionAbierta.FechaFin = req.Fin;
+                    imputacionAbierta.Horas = (decimal)Math.Round((req.Fin - imputacionAbierta.FechaInicio.Value).TotalHours, 4);
+                    imputacionAbierta.PiezasFabricadas = req.PiezasHechasTurno;
+                    imputacionAbierta.PiezasRotas = req.PiezasRotasTurno;
+                }
+                else
                 {
-                    IdOperacion = req.IdOperacion,
-                    IdEmpleado = req.IdEmpleado,
-                    FechaRegistro = DateTime.Now,
-                    FechaInicio = req.Inicio,
-                    FechaFin = req.Fin,
-                    Horas = Math.Round((decimal)(req.Fin - req.Inicio).TotalHours, 2),
-                    PiezasFabricadas = req.PiezasHechasTurno,
-                    PiezasRotas = req.PiezasRotasTurno
-                });
+                    _context.ImputacionesOperarios.Add(new ImputacionOperario
+                    {
+                        IdOperacion = req.IdOperacion,
+                        IdEmpleado = req.IdEmpleado,
+                        FechaRegistro = DateTime.Now,
+                        FechaInicio = req.Inicio,
+                        FechaFin = req.Fin,
+                        Horas = Math.Round((decimal)(req.Fin - req.Inicio).TotalHours, 2),
+                        PiezasFabricadas = req.PiezasHechasTurno,
+                        PiezasRotas = req.PiezasRotasTurno
+                    });
+                }
 
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -1005,7 +1018,6 @@ namespace SCADA.Api.Controllers
             return Ok(ordenes);
         }
 
-        // --- CLASES AUXILIARES ---
         public class CierreOperacionRequest
         {
             public int Id { get; set; }

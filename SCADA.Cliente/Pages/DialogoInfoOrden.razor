@@ -23,8 +23,7 @@
                     </RadzenStack>
                 </RadzenColumn>
                 <RadzenColumn Size="12" SizeMD="4" Style="text-align: right;">
-                    <RadzenBadge BadgeStyle="@(OrdenInfo.Estado == "En curso" ? BadgeStyle.Success :
-                                                                                                  OrdenInfo.Estado == "Finalizado" ? BadgeStyle.Danger : BadgeStyle.Info)"
+                    <RadzenBadge BadgeStyle="@(OrdenInfo.Estado == "En curso" ? BadgeStyle.Success : OrdenInfo.Estado == "Finalizado" ? BadgeStyle.Danger : BadgeStyle.Info)"
                                  Text="@OrdenInfo.Estado.ToUpper()"
                                  Style="padding: 10px 20px; font-size: 1rem;" />
                 </RadzenColumn>
@@ -99,7 +98,15 @@
                                     }
                                     else
                                     {
-                                        <span style="color: #A0AEC0;">---</span>
+                                        @if(op.Estado != "Pendiente")
+                                        {
+                                            <span style="color: #1F4E79; font-weight: bold;">0h 0m</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color: #1F4E79; font-weight: bold;">---</span>
+                                        }
+
                                     }
                                 </Template>
                                 <FooterTemplate>
@@ -131,15 +138,6 @@
                         </Columns>
                     </RadzenDataGrid>
                 </RadzenTabsItem>
-
-                @* pestaña tiempos totales *@
-                @* <RadzenTabsItem Text="Operarios" Icon="timer">
-                    <RadzenDataGrid Data="@listaOperarios" TItem="ImputacionOperario" class="rz-mt-2" AllowPaging="true" PageSize="6">
-                        <Columns>
-                            <RadzenDataGridColumn TItem="ImputacionOperario" Title="Operario"/>
-                        </Columns>
-                    </RadzenDataGrid>
-                </RadzenTabsItem> *@
             </Tabs>
         </RadzenTabs>
     }
@@ -215,15 +213,15 @@
                 .Where(i => i.FechaFin != null && i.FechaInicio != null)
                 .Sum(i => (i.FechaFin.Value - i.FechaInicio.Value).TotalHours);
 
-                var tramosActivos = operacion.Imputaciones.Where(i => i.FechaFin == null);
+                // var tramosActivos = operacion.Imputaciones.Where(i => i.FechaFin == null);
 
-                foreach (var activo in tramosActivos)
-                {
-                    if (activo.FechaInicio.HasValue)
-                    {
-                        horasRealesTotales += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
-                    }
-                }
+                // foreach (var activo in tramosActivos)
+                // {
+                //     if (activo.FechaInicio.HasValue)
+                //     {
+                //         horasRealesTotales += (DateTime.Now - activo.FechaInicio.Value).TotalHours;
+                //     }
+                // }
             }
         }
         tiempoTotalReal = TimeSpan.FromHours(horasRealesTotales);

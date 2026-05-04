@@ -457,10 +457,6 @@
     {
         bool operacionCerrada = await ImputacionService.VerificarOperacionCerrada(ordenSeleccionada.Id);
 
-        await ImputacionService.PausarFichajeAsync(ordenSeleccionada.Id, operarioSeleccionado.Id);
-
-        decimal horas = (decimal)segundosTrabajo / 3600;
-
         bool exito = await ImputacionService.ImputarTrabajoDesdeTerminalAsync(
             ordenSeleccionada.Id, idMaquinaNula, operarioSeleccionado.Id,
             horaInicioProceso, DateTime.Now, piezasFabricadas, piezasRotas
@@ -505,15 +501,8 @@
         {
             bool operacionCerrada = await ImputacionService.VerificarOperacionCerrada(ordenSeleccionada.Id);
 
-            await ImputacionService.FinalizarOperacionAsync(ordenSeleccionada.Id, operarioSeleccionado.Id);
-
-            if (piezasFabricadas > 0 || piezasRotas > 0 || ciclosReales > 0)
-            {
-                await ImputacionService.ImputarTrabajoDesdeTerminalAsync(
-                    ordenSeleccionada.Id, idMaquinaNula, operarioSeleccionado.Id,
-                    horaInicioProceso, DateTime.Now, piezasFabricadas, piezasRotas
-                );
-            }
+            await ImputacionService.ImputarTrabajoDesdeTerminalAsync(ordenSeleccionada.Id, idMaquinaNula, operarioSeleccionado.Id,
+                horaInicioProceso, DateTime.Now, piezasFabricadas, piezasRotas);
 
             if (operacionCerrada)
             {

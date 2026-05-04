@@ -74,9 +74,9 @@
                     </RadzenDataGridColumn>
 
                     @* fecha inicio *@
-                    <RadzenDataGridColumn TItem="Orden" Property="FechaInicio" Title="FECHA INICIO" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px" />
+                    <RadzenDataGridColumn TItem="Orden" Property="FechaInicio" Title="FECHA INICIO" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px" TextAlign="TextAlign.Center" />
                     @* fecha fin *@
-                    <RadzenDataGridColumn TItem="Orden" Property="FechaFin" Title="FECHA FIN" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px">
+                    <RadzenDataGridColumn TItem="Orden" Property="FechaFin" Title="FECHA FIN" FormatString="{0:dd/MM/yyyy HH:mm}" Width="160px" TextAlign="TextAlign.Center">
                         <Template Context="o">
                             @(o.FechaFin.HasValue ? o.FechaFin.Value.ToString("dd/MM/yyyy HH:mm") : "--")
                         </Template>
