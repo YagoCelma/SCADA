@@ -57,36 +57,43 @@
     }
     else
     {
-        <RadzenTabs class="rz-mt-4">
+        <RadzenTabs class="rz-mt-2" Style="--rz-tabs-tab-font-size: 0.85rem;">
             <Tabs>
-                @* pestaña horas imputadas *@
+                @* Pestaña Horas Operarios *@
                 <RadzenTabsItem Text="Horas Operarios" Icon="schedule">
-            
-                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-base-500 rz-mb-3">Resumen de tiempo por trabajador</RadzenText>
-
                     @if (listaOperarios == null)
                     {
-                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" class="rz-mt-2" />
                     }
                     else if (!listaOperarios.Any())
                     {
-                        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Text" ShowIcon="false" class="rz-p-2 rz-m-0">
-                            Nadie ha imputado horas en esta operación todavía.
+                        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Text" class="rz-p-2 rz-mt-2" Size="AlertSize.Small">
+                            Sin horas imputadas.
                         </RadzenAlert>
                     }
                     else
                     {
-                        <RadzenDataGrid Data="@listaOperarios" TItem="OperarioHorasDTO" AllowPaging="false">
+                        <RadzenDataGrid Data="@listaOperarios" TItem="OperarioHorasDTO" Density="Density.Compact" class="rz-mt-2">
                             <Columns>
-                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="CodigoOperario" Title="Cód." Width="100px" />
-                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="NombreCompleto" Title="Nombre" />
-                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="TotalHoras" Title="Tiempo" Width="110px" TextAlign="TextAlign.Center">
+                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="CodigoOperario" Title="Cód." Width="120px">
                                     <Template Context="op">
-                                        <span style="font-weight: bold; color: #475569;">
+                                        <span style="font-size: 0.85rem; color: #64748B;">@op.CodigoOperario</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                        
+                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="NombreCompleto" Title="Nombre">
+                                    <Template Context="op">
+                                        <span style="font-weight: 600; font-size: 0.85rem; color: #1A2E3F;">@op.NombreCompleto</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn TItem="OperarioHorasDTO" Property="TotalHoras" Title="Tiempo" Width="100px" TextAlign="TextAlign.Center">
+                                    <Template Context="op">
+                                        <span style="font-weight: 700; color: #1F4E79; font-size: 0.85rem;">
                                             @{
-                                                var tiempoReloj = TimeSpan.FromHours((double)op.TotalHoras);
+                                                var tr = TimeSpan.FromHours((double)op.TotalHoras);
                                             }
-                                            @((int)tiempoReloj.TotalHours)h @tiempoReloj.Minutes.ToString("D2")m
+                                            @((int)tr.TotalHours)h @tr.Minutes.ToString("D2")m
                                         </span>
                                     </Template>
                                 </RadzenDataGridColumn>
@@ -95,59 +102,51 @@
                     }
                 </RadzenTabsItem>
 
-                @* pestaña materiales consumidos *@
+                @* Pestaña Materiales *@
                 <RadzenTabsItem Text="Materiales" Icon="inventory_2">
-            
-                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-color-base-500 rz-mb-3">Desglose de materiales utilizados</RadzenText>
-
                     @if (listaMateriales == null)
                     {
-                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" class="rz-mt-2" />
                     }
                     else if (!listaMateriales.Any())
                     {
-                        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Text" ShowIcon="false" class="rz-p-2 rz-m-0">
-                            No se han registrado consumos de material en esta operación.
+                        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Text" class="rz-p-2 rz-mt-2" Size="AlertSize.Small">
+                            Sin consumos registrados.
                         </RadzenAlert>
                     }
                     else
                     {
-                        <RadzenDataGrid Data="@listaMateriales" TItem="ImputacionMaterial" AllowPaging="true" PageSize="5">
+                        <RadzenDataGrid Data="@listaMateriales" TItem="ImputacionMaterial" Density="Density.Compact" class="rz-mt-2" AllowPaging="true" PageSize="5">
                             <Columns>
-                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.Nombre" Title="Material">
+                                <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Material">
                                     <Template Context="mat">
-                                        <span style="font-weight: bold; color: #1A2E3F;">
-                                            @(mat.Material?.Nombre ?? "Desconocido")
-                                        </span>
-                                        @if (mat.EsMerma)
-                                        {
-                                            <span style="background-color: #EF4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; font-weight: bold;">
-                                                MERMA
-                                            </span>
-                                        }
+                                        <div style="display: flex; align-items: center; gap: 4px;">
+                                            <span style="font-weight: 600; font-size: 0.85rem; color: #1A2E3F;">@(mat.Material?.Nombre ?? "---")</span>
+                                            @if (mat.EsMerma)
+                                            {
+                                                <span style="background-color: #EF4444; color: white; font-size: 0.65rem; padding: 1px 4px; border-radius: 3px; font-weight: bold;">MERMA</span>
+                                            }
+                                        </div>
                                     </Template>
                                 </RadzenDataGridColumn>
                         
-                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="100px" TextAlign="TextAlign.Center">
+                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="70px" TextAlign="TextAlign.Center">
                                     <Template Context="mat">
-                                        <span style="color: black; font-weight: bold;">@mat.Cantidad</span>
+                                        <span style="font-weight: 800; font-size: 0.85rem; color: #1F4E79;">@mat.Cantidad</span>
                                     </Template>
                                 </RadzenDataGridColumn>
 
-                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Empleado.Nombre" Title="Operario">
+                                <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Operario">
                                     <Template Context="mat">
-                                        <span style="color: #64748B;">
-                                            <RadzenIcon Icon="person" Style="font-size: 1rem; vertical-align: text-bottom; margin-right: 4px;" />
-                                            @(mat.Empleado?.Nombre ?? "Sin asignar") @(mat.Empleado?.Apellidos ?? "Sin asignar")
-                                        </span>
+                                        <div style="font-size: 0.8rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            <span style="font-weight: bold;">[@(mat.Empleado?.CodigoEmpleado ?? "---")]</span> @mat.Empleado?.Nombre @mat.Empleado?.Apellidos
+                                        </div>
                                     </Template>
                                 </RadzenDataGridColumn>
 
-                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Empleado.CodigoEmpleado" Title="Codigo empleado" Width="150px">
+                                <RadzenDataGridColumn TItem="ImputacionMaterial" Property="FechaRegistro" Title="Fecha" Width="100px">
                                     <Template Context="mat">
-                                        <span style="color: #64748B;">
-                                            @(mat.Empleado?.CodigoEmpleado ?? "Sin asignar")
-                                        </span>
+                                        <span style="font-size: 0.8rem; color: #94A3B8;">@mat.FechaRegistro.ToString("dd/MM HH:mm")</span>
                                     </Template>
                                 </RadzenDataGridColumn>
                             </Columns>

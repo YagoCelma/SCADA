@@ -1,10 +1,12 @@
-﻿@using SCADA.Modelos
+﻿@using SCADA.Cliente.Services
+@using SCADA.Modelos
 @using Radzen
 @using Radzen.Blazor
 
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 @inject SCADA.Cliente.Services.ImputacionService ImputacionService
+@inject ServicioEmpleado ServicioEmpleado
 
 <RadzenStack Gap="1rem" class="rz-p-4">
     <RadzenText TextStyle="TextStyle.H6">Imputar horas y materiales</RadzenText>
@@ -32,18 +34,22 @@
                     <RadzenStack Gap="1rem" class="rz-mt-4">
                         <RadzenStack Gap="0.5rem">
                             <RadzenText TextStyle="TextStyle.Subtitle2">Seleccionar operario</RadzenText>
-                            <RadzenDropDown @bind-Value="nuevaImp.IdEmpleado" Data="@ListaOperarios" ValueProperty="Id" class="w-100"
-                                            AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+                            <RadzenDropDown @bind-Value="nuevaImp.IdEmpleado" Data="@ListaOperarios" TextProperty="BusquedaRapida" ValueProperty="Id" class="w-100"
+                                            AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" FilterOperator="StringFilterOperator.Contains" 
+                                            Placeholder="Escribe nombre o código...">
+
                                 <Template Context="emp">
                                     <div style="display: flex; justify-content: space-between; width: 100%;">
                                         <span>@emp.Nombre @emp.Apellidos</span>
                                         <span style="font-size: 0.8rem; color: gray;">(@emp.CodigoEmpleado)</span>
                                     </div>
                                 </Template>
+
                                 <ValueTemplate Context="emp">
                                     @($"{emp.Nombre} {emp.Apellidos} ({emp.CodigoEmpleado})")
                                 </ValueTemplate>
                             </RadzenDropDown>
+
                         </RadzenStack>
                         @* observaciones *@
                         <RadzenStack Gap="0.5rem">
@@ -166,7 +172,7 @@
     }
 </RadzenStack>
 
-@code {
+    @code {
     [Parameter] public dynamic OperacionActiva { get; set; }
     [Parameter] public List<Empleado> ListaOperarios { get; set; }
     [Parameter] public List<Material> ListaMateriales { get; set; }
@@ -186,6 +192,7 @@
         {
             await CargarMateriales();
         }
+        ListaOperarios = await ServicioEmpleado.GetAllAsync();
     }
 
     private async Task CargarMateriales()
@@ -221,8 +228,13 @@
             return;
         }
 
-        TimeSpan diferencia = horaFin.Value - horaInicio.Value;
+        if (nuevaImp.IdEmpleado <= 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "Atención", "Debes seleccionar un operario de la lista");
+            return;
+        }
 
+        TimeSpan diferencia = horaFin.Value - horaInicio.Value;
         if (diferencia.TotalHours < 0)
         {
             diferencia = diferencia.Add(TimeSpan.FromHours(24));
@@ -236,14 +248,22 @@
         }
 
         DateTime diaElegido = nuevaImp.FechaRegistro.Date;
-
         nuevaImp.FechaInicio = diaElegido.Add(horaInicio.Value.TimeOfDay);
         nuevaImp.FechaFin = diaElegido.Add(horaFin.Value.TimeOfDay);
 
-        nuevaImp.IdOperacion = OperacionActiva.Id;
+        try
+        {
+            nuevaImp.IdOperacion = OperacionActiva.Id;
+        }
+        catch
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo identificar la operación activa");
+            return;
+        }
 
         try
         {
+            Console.WriteLine($"----------------------Enviando Imputación: Empleado={nuevaImp.IdEmpleado}, Operacion={nuevaImp.IdOperacion}");
             var exito = await ImputacionService.InsertarImputacionOperario(nuevaImp);
 
             if (exito)
@@ -253,12 +273,12 @@
             }
             else
             {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", "No se pudo guardar las horas");
+                NotificationService.Notify(NotificationSeverity.Error, "Error de Servidor", "La API rechazó los datos. Revisa que el operario exista.");
             }
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", "Fallo al guardar: " + ex.Message);
+            NotificationService.Notify(NotificationSeverity.Error, "Error Fatal", "Error de conexión: " + ex.Message);
         }
     }
 

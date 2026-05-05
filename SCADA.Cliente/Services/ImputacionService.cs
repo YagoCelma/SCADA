@@ -113,10 +113,18 @@ namespace SCADA.Cliente.Services
             return await response.Content.ReadFromJsonAsync<bool>();
         }
 
-        public async Task<bool> InsertarImputacionOperario(ImputacionOperario nuevaImp)
+        public async Task<bool> InsertarImputacionOperario(ImputacionOperario imp)
         {
-            var response = await _http.PostAsJsonAsync("api/imputaciones/imputacionoperario", nuevaImp);
-            return await response.Content.ReadFromJsonAsync<bool>();
+            try
+            {
+                var response = await _http.PostAsJsonAsync("api/Imputaciones/imputacionoperario", imp);
+
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public async Task ActualizarCierreOperacion(dynamic operacion)

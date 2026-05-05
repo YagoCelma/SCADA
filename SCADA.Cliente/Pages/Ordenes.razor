@@ -68,7 +68,8 @@
                     <RadzenDataGridColumn TItem="Orden" Property="PorcentajeTiempoTotal" Title="EFICIENCIA" Width="250px">
                         <Template Context="o">
                             <RadzenStack Gap="0.2rem">
-                                <RadzenProgressBar Value="@o.PorcentajeTiempoTotal" ProgressBarStyle="ProgressBarStyle.Primary" />
+                                <RadzenProgressBar Value="@o.PorcentajeTiempoTotal"
+                                                   ProgressBarStyle="@(o.PorcentajeTiempoTotal >= 100 ? ProgressBarStyle.Danger : ProgressBarStyle.Primary)" />
                             </RadzenStack>
                         </Template>
                     </RadzenDataGridColumn>

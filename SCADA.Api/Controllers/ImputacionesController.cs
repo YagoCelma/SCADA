@@ -304,14 +304,29 @@ namespace SCADA.Api.Controllers
         {
             try
             {
-                nuevaImp.Operacion = null;
-                nuevaImp.Empleado = null;
+                if (nuevaImp.IdEmpleado <= 0 || nuevaImp.IdOperacion <= 0)
+                {
+                    return BadRequest("IDs de empleado u operación no válidos.");
+                }
+
+                nuevaImp.Empleado = null!;
+                nuevaImp.Operacion = null!;
+
                 _context.ImputacionesOperarios.Add(nuevaImp);
-                return Ok(await _context.SaveChangesAsync() > 0);
+                await _context.SaveChangesAsync();
+
+                return Ok();
             }
-            catch
+            catch (DbUpdateException dbEx)
             {
-                return Ok(false);
+                var msg = dbEx.InnerException?.Message ?? dbEx.Message;
+                Console.WriteLine($"--------------------------------- ERROR SQL: {msg}");
+                return BadRequest($"Error de base de datos: {msg}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--- ERROR GENERAL: {ex.Message}");
+                return BadRequest(ex.Message);
             }
         }
 

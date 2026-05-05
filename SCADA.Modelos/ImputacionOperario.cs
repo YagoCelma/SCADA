@@ -21,8 +21,8 @@ public class ImputacionOperario
     public int PiezasRotas { get; set; } = 0;
 
     [ForeignKey("IdOperacion")]
-    public virtual OperacionesOrden Operacion { get; set; } = null!;
+    public virtual OperacionesOrden? Operacion { get; set; }
 
     [ForeignKey("IdEmpleado")]
-    public virtual Empleado Empleado { get; set; } = null!;
+    public virtual Empleado? Empleado { get; set; }
 }

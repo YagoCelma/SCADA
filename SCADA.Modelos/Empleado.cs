@@ -19,5 +19,6 @@ namespace SCADA.Modelos
 
         public string BusquedaCombinada => $"{Nombre} - {CodigoEmpleado}";
         public virtual ICollection<EmpleadoMaquina> MaquinasEmpleados { get; set; } = new List<EmpleadoMaquina>();
+        public string BusquedaRapida => $"{Nombre} {Apellidos} {CodigoEmpleado}";
     }
 }
