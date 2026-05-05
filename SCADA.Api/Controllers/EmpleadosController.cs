@@ -139,5 +139,41 @@ namespace SCADA.Api.Controllers
                 return Ok(new List<Empleado>());
             }
         }
+        [HttpGet("operarios/horas/orden/{idOrden}")]
+        public async Task<IActionResult> ObtenerOperariosPorOrdenAsync(int idOrden)
+        {
+            try
+            {
+                var idsOperaciones = await _db.OperacionesOrden
+                    .Where(o => o.IdOrden == idOrden) 
+                    .Select(o => o.Id)
+                    .ToListAsync();
+
+                var resultado = await _db.ImputacionesOperarios
+                    .Include(i => i.Empleado)
+                    .Where(i => idsOperaciones.Contains(i.IdOperacion))
+
+                    .GroupBy(i => new {
+                        i.Empleado.Id,
+                        i.Empleado.Nombre,
+                        i.Empleado.Apellidos,
+                        i.Empleado.CodigoEmpleado
+                    })
+                    .Select(grupo => new OperarioHorasOrdenDTO
+                    {
+                        CodigoEmpleado = grupo.Key.CodigoEmpleado.ToString(),
+
+                        NombreCompleto = grupo.Key.Nombre + " " + grupo.Key.Apellidos,
+                        HorasTotales = grupo.Sum(i => i.Horas)
+                    })
+                    .ToListAsync();
+
+                return Ok(resultado);
+            }
+            catch
+            {
+                return BadRequest("Error al obtener los operarios de la orden.");
+            }
+        }
     }
 }

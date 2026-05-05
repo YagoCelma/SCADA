@@ -4,6 +4,7 @@
 @using Radzen.Blazor
 @inject ImputacionService ImputacionService
 @inject DialogService DialogService
+@inject ServicioEmpleado ServicioEmpleado
 
 <div class="fuxa-info-container">
     @if (OrdenInfo == null)
@@ -126,18 +127,79 @@
                 <RadzenTabsItem Text="Materiales consumidos" Icon="inventory_2">
                     <RadzenDataGrid Data="@listaMateriales" TItem="ImputacionMaterial" class="rz-mt-2" AllowPaging="true" PageSize="6">
                         <Columns>
-                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.Nombre" Title="Material" />
-                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cant." Width="100px" TextAlign="TextAlign.Center">
+                            
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Material.Nombre" Title="Material">
                                 <Template Context="m">
-                                    <span style="font-weight: bold;">@m.Cantidad</span>
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                        <RadzenIcon Icon="layers" Style="color: #6B8FAD; font-size: 1.5rem;" />
+                                        <span style="font-weight: 600; color: #1A2E3F; font-size: 0.9rem;">@m.Material.Nombre</span>
+                                    </RadzenStack>
                                 </Template>
                             </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="Cantidad" Title="Cantidad" Width="130px" TextAlign="TextAlign.Center">
+                                <Template Context="m">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@m.Cantidad.ToString()" IsPill="true" Style="font-weight: 600; font-size: 0.8rem; padding: 6px 18px; background-color: #1F4E79;" />
+                                </Template>
+                            </RadzenDataGridColumn>
+
                             <RadzenDataGridColumn TItem="ImputacionMaterial" Title="Registrado por">
-                                <Template Context="e">
-                                    <span>@e.Empleado.Nombre @e.Empleado.Apellidos</span>
+                                <Template Context="m">
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.3rem">
+                                        <RadzenIcon Icon="person" Style="color: #A0AEC0; font-size: 1.2rem;" />
+                                        <span style="color: #4A5568; font-weight: 500;">@m.Empleado.Nombre @m.Empleado.Apellidos</span>
+                                    </RadzenStack>
                                 </Template>
                             </RadzenDataGridColumn>
-                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="FechaRegistro" Title="Fecha" FormatString="{0:dd/MM HH:mm}" Width="130px" />
+
+                            <RadzenDataGridColumn TItem="ImputacionMaterial" Property="FechaRegistro" Title="Fecha" Width="150px" TextAlign="TextAlign.Center">
+                                <Template Context="m">
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="0.3rem">
+                                        <RadzenIcon Icon="calendar_today" Style="color: #A0AEC0; font-size: 1.1rem;" />
+                                        <span style="color: #4A5568; font-size: 0.95rem; font-weight: 500;">
+                                            @m.FechaRegistro.ToString("dd/MM HH:mm")
+                                        </span>
+                                    </RadzenStack>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenTabsItem>
+
+                @* pestaña empleados horas *@
+                <RadzenTabsItem Text="Operarios" Icon="person">
+                    <RadzenDataGrid Data="@listaOperarios" TItem="OperarioHorasOrdenDTO" class="rz-mt-2" AllowPaging="true" PageSize="6">
+                        <Columns>
+                            
+                            <RadzenDataGridColumn TItem="OperarioHorasOrdenDTO" Property="NombreCompleto" Title="Empleado" Width="250px">
+                                <Template Context="o">
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                        <RadzenIcon Icon="account_circle" Style="color: #6B8FAD; font-size: 1.8rem;" />
+                                        <span style="font-weight: 600; color: #1A2E3F; font-size: 0.9rem;">@o.NombreCompleto</span>
+                                    </RadzenStack>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="OperarioHorasOrdenDTO" Property="CodigoEmpleado" Title="Código ID" TextAlign="TextAlign.Center" Width="150px">
+                                <Template Context="o">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@o.CodigoEmpleado" IsPill="true" Style="font-weight: 700; color: #4A5568; padding: 6px 12px; border: 1px solid #E2E8F0;" />
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="OperarioHorasOrdenDTO" Property="HorasTotales" Title="Tiempo dedicado" TextAlign="TextAlign.Center" Width="150px">
+                                <Template Context="o">
+                                    @{
+                                        var ts = TimeSpan.FromHours((double)o.HorasTotales);
+                                    }
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Gap="0.2rem">
+                                        <span style="font-weight: 800; color: #1F4E79; font-size: 1rem;">
+                                            @((int)ts.TotalHours)h @ts.Minutes.ToString("D2")m
+                                        </span>
+                                    </RadzenStack>
+                                </Template>
+                            </RadzenDataGridColumn>
+
                         </Columns>
                     </RadzenDataGrid>
                 </RadzenTabsItem>
@@ -166,7 +228,7 @@
 
     private List<OperacionesOrden> listaOperaciones = new();
     private List<ImputacionMaterial> listaMateriales = new();
-    private List<ImputacionOperario> listaOperarios = new();
+    private List<OperarioHorasOrdenDTO> listaOperarios = new();
 
     private int porcentajeCompletado = 0;
     private TimeSpan tiempoTotalTeorico = TimeSpan.Zero;
@@ -186,7 +248,7 @@
 
         listaMateriales = await ImputacionService.ObtenerMaterialesPorOrdenAsync(OrdenInfo.Id);
 
-        //listaOperarios = await ImputacionService.ObtenerOperariosPorOrdenAsync(OrdenInfo.Id);
+        listaOperarios = await ServicioEmpleado.ObtenerOperariosPorOrdenAsync(OrdenInfo.Id);
 
         CalcularTiemposTotales();
 

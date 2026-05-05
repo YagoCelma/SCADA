@@ -66,4 +66,24 @@ public class ServicioEmpleado
         var result = await _http.GetFromJsonAsync<List<Empleado>>("api/empleados/empleadosconmaquina");
         return result ?? new List<Empleado>();
     }
+
+    public async Task<List<OperarioHorasOrdenDTO>> ObtenerOperariosPorOrdenAsync(int idOrden)
+    {
+
+        try
+        {
+            var resultado = await _http.GetAsync($"api/empleados/operarios/horas/orden/{idOrden}");
+
+            if (resultado.IsSuccessStatusCode)
+            {
+                return await resultado.Content.ReadFromJsonAsync<List<OperarioHorasOrdenDTO>>();
+            }
+            return new List<OperarioHorasOrdenDTO>();
+        }
+        catch
+        {
+            return new List<OperarioHorasOrdenDTO>();
+        }
+        
+    }
 }
