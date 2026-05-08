@@ -2,266 +2,306 @@
 @inject NotificationService NotificationService
 @inject NavigationManager NavManager
 
-<RadzenCard Style="max-width: 500px; margin: 2rem auto; border-radius: 20px;">
-    @if (!estaAutenticado)
-    {
-        @* teclado *@
-        <div style="margin-bottom: 2rem; text-align: center;">
-            <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H1" Style="margin: 0;">
-                <b>Introduce tu PIN</b>
-            </RadzenText>
-        </div>
+<div class="tablet-container">
+    <RadzenCard class="glass-card">
+        @if (!estaAutenticado)
+        {
+            @* botones login *@
+            <div class="login-wrapper">
+                <div class="info-side">
+                    <RadzenText TextStyle="TextStyle.H3" class="rz-m-0"><b>PORTAL</b></RadzenText>
+                    <RadzenText TextStyle="TextStyle.H5" Style="color: #666;">Introduce tu PIN de acceso</RadzenText>
+                    <div class="pin-display-box">@(new String('•', pinIngresado.Length))</div>
+                </div>
 
-        <div class="numpad-container">
-            <div class="pin-display">@(new String('•', pinIngresado.Length))</div>
-            <div class="numpad-grid">
-                @for (int i = 1; i <= 9; i++)
-                {
-                    int n = i;
-                    <button class="num-btn" @onclick="() => AgregarNumero(n)">@n</button>
-                }
-                <button class="num-btn btn-clear" @onclick="BorrarNumero"><RadzenIcon Icon="backspace" /></button>
-                <button class="num-btn" @onclick="() => AgregarNumero(0)">0</button>
-                <button class="num-btn btn-enter" @onclick="ValidarPin"><RadzenIcon Icon="login" /></button>
+                <div class="keys-side">
+                    <div class="numpad-grid">
+                        @for (int i = 1; i <= 9; i++)
+                        {
+                            int n = i;
+                            <button class="num-btn" @onclick="() => AgregarNumero(n)">@n</button>
+                        }
+                        <button class="num-btn btn-danger-alt" @onclick="BorrarNumero"><RadzenIcon Icon="backspace" /></button>
+                        <button class="num-btn" @onclick="() => AgregarNumero(0)">0</button>
+                        <button class="num-btn btn-success-alt" @onclick="ValidarPin"><RadzenIcon Icon="login" /></button>
+                    </div>
+                </div>
             </div>
-        </div>
-    }
-    else
-    {
-        @* opciones de fichaje *@
-        <RadzenStack AlignItems="AlignItems.Center" Gap="1.5rem" class="rz-p-4">
-            <RadzenText TextStyle="TextStyle.H4">Hola, <b>@nombreOperario</b></RadzenText>
-
-            @* Cuadro de información de hora y motivo *@
-            @if (!string.IsNullOrEmpty(horaFichaje))
-            {
-                <RadzenAlert Severity="AlertSeverity.Info" Variant="Variant.Flat" AllowClose="false" Style="width: 100%; text-align: center;">
-                    Último estado a las <b>@horaFichaje</b>
-                    @if (!string.IsNullOrEmpty(motivoSeleccionado))
+        }
+        else
+        {
+            @* acciones fichaje *@
+            <div class="actions-wrapper">
+                <div class="header-user">
+                    <RadzenText TextStyle="TextStyle.H3" class="rz-m-0">Hola, <b>@nombreOperario</b></RadzenText>
+                    @if (!string.IsNullOrEmpty(horaFichaje))
                     {
-                        <span> - Motivo: <b>@motivoSeleccionado</b></span>
+                        <div class="status-banner">
+                            <RadzenIcon Icon="info" /> <b>@estadoActual:</b> @horaFichaje @(string.IsNullOrEmpty(motivoSeleccionado) ? "" : $"({motivoSeleccionado})")
+                        </div>
                     }
-                </RadzenAlert>
-            }
-            
-            @if (mostrandoMotivosPausa)
-            {
-                @* motivos de la pausa *@
-                <RadzenText TextStyle="TextStyle.Subtitle1">¿Cuál es el motivo de la pausa?</RadzenText>
-                <RadzenRow class="w-100" Gap="1rem">
-                    @* cafe *@
-                    <RadzenColumn Size="6">
-                        <RadzenButton Text="CAFÉ" Icon="local_cafe"
-                                      ButtonStyle="ButtonStyle.Primary"
-                                      class="w-100" Style="height: 100px; font-size: 1.2rem;"
-                                      Click="@(() => ConfirmarPausa("Café"))" />
-                    </RadzenColumn>
-                    @* baño *@
-                    <RadzenColumn Size="6">
-                        <RadzenButton Text="BAÑO" Icon="wc"
-                                      ButtonStyle="ButtonStyle.Info"
-                                      class="w-100" Style="height: 100px; font-size: 1.2rem;"
-                                      Click="@(() => ConfirmarPausa("Baño"))" />
-                    </RadzenColumn>
-                    @* conciliacion *@
-                    <RadzenColumn Size="12">
-                        <RadzenButton Text="CONCILIACIÓN" Icon="home"
-                                      ButtonStyle="ButtonStyle.Warning" class="w-100"
-                                      Style="height: 100px; font-size: 1.2rem;"
-                                      Click="@(() => ConfirmarPausa("Conciliacion"))" />
+                </div>
 
-                    </RadzenColumn>
-                </RadzenRow>
+                <div class="main-content">
+                    @if (mostrandoMotivosPausa)
+                    {
+                        @* motivos pausa *@
+                        <div class="full-grid grid-motivos">
+                            <RadzenButton Text="CAFÉ" Icon="local_cafe" ButtonStyle="ButtonStyle.Primary" Click="@(() => ConfirmarPausa("Café"))" class="huge-btn" />
+                            <RadzenButton Text="BAÑO" Icon="wc" ButtonStyle="ButtonStyle.Info" Click="@(() => ConfirmarPausa("Baño"))" class="huge-btn" />
+                            <RadzenButton Text="CONCILIACIÓN" Icon="home" ButtonStyle="ButtonStyle.Warning" Click="@(() => ConfirmarPausa("Conciliacion"))" class="huge-btn" />
+                            <RadzenButton Text="VOLVER" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Light" Click="CancelarPausa" Icon="arrow_back" class="huge-btn" />
+                        </div>
+                    }
+                    else if (mostrandoMotivosAusencia)
+                    {
+                        @* motivos ausencia *@
+                        <div class="full-grid">
+                            <RadzenButton Text="MÉDICO CABECERA" Icon="medical_services" ButtonStyle="ButtonStyle.Primary" Click="@(() => ConfirmarAusencia("Médico cabecera"))" class="huge-btn" />
+                            <RadzenButton Text="ESPECIALISTA" Icon="medical_services" ButtonStyle="ButtonStyle.Warning" Click="@(() => ConfirmarAusencia("Médico especialista"))" class="huge-btn" />
+                            <RadzenButton Text="VOLVER" Variant="Variant.Text" Click="CancelarAusencia" Icon="arrow_back" class="rz-mt-4 span-all" />
+                        </div>
+                    }
+                    else
+                    {
+                        @* acciones principales *@
+                        <div class="full-grid">
+                            <RadzenButton Text="@(estadoActual == "Fuera" ? "INICIAR JORNADA" : (estadoActual == "Trabajando" ? "TRABAJANDO..." : "REANUDAR TRABAJO"))"
+                                          Icon="play_circle" ButtonStyle="ButtonStyle.Success" 
+                                          Disabled="@(estadoActual == "Trabajando")" Click="IniciarTrabajo" class="huge-btn span-all main-action" />
 
-                <RadzenButton Text="Cancelar" Variant="Variant.Text"
-                              Click="CancelarPausa" class="rz-mt-2" />
-            }
-            else if (mostrandoMotivosAusencia)
-            {
-                <RadzenText TextStyle="TextStyle.Subtitle1">¿Cual es el motivo de la ausencia?</RadzenText>
-                <RadzenRow class="w-100" Gap="1rep">
+                            <RadzenButton Text="PAUSA" Icon="pause_circle" ButtonStyle="ButtonStyle.Warning" 
+                                          Disabled="@(estadoActual != "Trabajando")" Click="PedirMotivoPausa" class="huge-btn" />
+                            
+                            <RadzenButton Text="AUSENCIA" Icon="event_busy" ButtonStyle="ButtonStyle.Danger" 
+                                          Disabled="@(estadoActual != "Trabajando")" Click="PedirMotivoAusencia" class="huge-btn" />
 
-                    @* medico de cabecera *@
-                    <RadzenColumn Size="12">
-                        <RadzenButton Text="MÉDICO DE CABECERA" Icon="medical_services"
-                                      ButtonStyle="ButtonStyle.Primary"
-                                      class="w-100" Style="height: 100px; font-size: 1.2rem;"
-                                      Click="@(() => ConfirmarAusencia("Médico cabecera"))" />
-                    </RadzenColumn>
-                    @* medico especialista *@
-                    <RadzenColumn Size="12">
-                        <RadzenButton Text="MÉDICO ESPECIALISTA" Icon="medical_services"
-                                      ButtonStyle="ButtonStyle.Warning"
-                                      class="w-100" Style="height: 100px; font-size: 1.2rem;"
-                                      Click="@(() => ConfirmarAusencia("Médico especialista"))" />
-                    </RadzenColumn>
-                </RadzenRow>
-
-                <RadzenButton Text="Cancelar" Variant="Variant.Text"
-                              Click="CancelarAusencia" class="rz-mt-2" />
-            }
-            else
-            {
-                @* pantalla principal *@
-
-                @* botón trabajando *@
-                <RadzenButton Text="@(estadoActual == "Fuera" ? "INICIAR JORNADA" : (estadoActual == "Trabajando" ? "TRABAJANDO..." : "REANUDAR TRABAJO"))"
-                              Icon="play_circle"
-                              ButtonStyle="ButtonStyle.Success"
-                              Size="ButtonSize.Large"
-                              class="w-100" Style="height: 100px; font-size: 1.5rem;"
-                              Disabled="@(estadoActual == "Trabajando")"
-                              Click="IniciarTrabajo" />
-
-                @* botón pausa *@
-                <RadzenRow class="w-100" Gap="1rem">
-                    <RadzenColumn Size="6">
-                        <RadzenButton Text="PAUSA" Icon="pause_circle"
-                                      ButtonStyle="ButtonStyle.Warning"
-                                      class="w-100" Style="height: 80px;"
-                                      Disabled="@(estadoActual != "Trabajando")"
-                                      Click="PedirMotivoPausa" />
-                    </RadzenColumn>
-
-                    @* botón ausencia *@
-                    <RadzenColumn Size="6">
-                        <RadzenButton Text="AUSENCIA" Icon="event_busy"
-                                      ButtonStyle="ButtonStyle.Danger"
-                                      class="w-100" Style="height: 80px;"
-                                      Disabled="@(estadoActual != "Trabajando")"
-                                      Click="PedirMotivoAusencia" />
-                    </RadzenColumn>
-                </RadzenRow>
-
-                @if (estadoActual != "Fuera")
-                {
-                    <RadzenButton Text="FINALIZAR DÍA" Icon="stop_circle"
-                                  ButtonStyle="ButtonStyle.Secondary"
-                                  class="rz-mt-4 w-100" Click="FinalizarDia" />
-                }
-
-                <RadzenButton Text="Salir / Cambiar Usuario" Variant="Variant.Text"
-                              Click="Logout" class="rz-mt-2" />
-            }
-        </RadzenStack>
-    }
-</RadzenCard>
+                            @if (estadoActual != "Fuera")
+                            {
+                                <RadzenButton Text="FINALIZAR DÍA" Icon="stop_circle" ButtonStyle="ButtonStyle.Secondary" Click="FinalizarDia" class="huge-btn span-all" Style="height: 80px;" />
+                            }
+                            
+                            <RadzenButton Text="CAMBIAR USUARIO" Variant="Variant.Text" Click="Logout" Icon="sync_alt" class="span-all rz-mt-2" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </RadzenCard>
+</div>
 
 <style>
-    .numpad-container { max-width: 350px; margin: 2rem auto 0 auto; }
-    .pin-display {
-        background: white; border: 2px solid #D5E3EF; border-radius: 12px;
-        font-size: 3rem; letter-spacing: 15px; text-align: center;
-        height: 80px; line-height: 80px; margin-bottom: 20px;
-        color: #1F4E79; overflow: hidden;
+    .tablet-container {
+        min-height: 90vh;
+        display: flex;
+        padding: 10px;
+        background-color: #f4f7f9;
+        overflow: hidden; 
     }
-    .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+
+    .glass-card {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        padding: 1.5rem !important;
+        justify-content: center;
+    }
+
+    .login-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .info-side { flex: 1; text-align: center; min-width: 250px; }
+    .keys-side { flex: 1; min-width: 300px; }
+
+    .pin-display-box {
+        background: white;
+        border: 3px solid #1F4E79;
+        border-radius: 12px;
+        font-size: 3rem;
+        height: 80px;
+        line-height: 80px;
+        margin-top: 1rem;
+        letter-spacing: 12px;
+        color: #1F4E79;
+    }
+
+    .numpad-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
     .num-btn {
-        background: white; border: 2px solid #D5E3EF; border-radius: 12px;
-        font-size: 2rem; font-weight: bold; color: #1F4E79;
-        padding: 20px 0; cursor: pointer; transition: all 0.1s;
-        display: flex; align-items: center; justify-content: center;
+        height: 70px;
+        font-size: 2rem;
+        font-weight: bold;
+        border-radius: 12px;
+        background: white;
+        border: 2px solid #D5E3EF;
     }
-    .num-btn:active { background: #E9EEF4; transform: scale(0.95); }
-    .btn-clear { background:#dc3545; color: white; border-color: #dc3545 }
-    .btn-enter { background: #28a745; color: white; border-color: #28a745; }
-    .btn-enter:active { background: #218838; }
-    .w-100 { width: 100%; }
+
+    .status-banner {
+        background: #1f4e79;
+        color: white;
+        padding: 10px;
+        border-radius: 10px;
+        margin: 10px 0;
+        font-size: 1.1rem;
+        text-align: center;
+    }
+
+    .full-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .huge-btn {
+        height: 140px !important;
+        font-size: 1.4rem !important;
+        border-radius: 12px !important;
+    }
+
+    .main-action { height: 160px !important; font-size: 1.8rem !important; }
+    .span-all { grid-column: span 2; }
+
+    @@media (orientation: landscape) {
+        .glass-card { padding: 1rem !important; }
+        .header-user h3 { font-size: 1.5rem; margin: 0; }
+        
+        .huge-btn { height: 90px !important; }
+        .main-action { height: 110px !important; }
+        .pin-display-box { height: 70px; line-height: 70px; font-size: 2.5rem; }
+        .num-btn { height: 60px; font-size: 1.8rem; }
+        
+        .grid-motivos {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .grid-motivos .huge-btn { grid-column: span 1; }
+    }
+
+    @@media (max-width: 600px) {
+        .full-grid { grid-template-columns: 1fr 1fr; }
+        .huge-btn { height: 100px !important; }
+    }
+
+    .numpad-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .num-btn {
+        height: 85px;
+        font-size: 2.2rem;
+        font-weight: bold;
+        border-radius: 15px;
+        background: white;
+        border: 2px solid #D5E3EF;
+        color: #1F4E79;
+        transition: all 0.1s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .num-btn:active { 
+        transform: scale(0.95);
+        filter: brightness(0.9);
+    }
+
+    .btn-danger-alt { 
+        background: #fee2e2 !important; 
+        border-color: #f87171 !important; 
+        color: #b91c1c !important; 
+    }
+    
+    .btn-success-alt { 
+        background: #dcfce7 !important; 
+        border-color: #4ade80 !important; 
+        color: #15803d !important; 
+    }
+
+    @@media (orientation: landscape) {
+        .num-btn { 
+            height: 65px; 
+            font-size: 1.8rem;
+        }
+        .pin-display-box {
+            height: 75px;
+            line-height: 75px;
+            font-size: 2.5rem;
+            margin-top: 0.5rem;
+        }
+        .login-wrapper {
+            gap: 2.5rem; 
+        }
+    }
 </style>
 
 @code {
     private string pinIngresado = "";
     private bool estaAutenticado = false;
     private string nombreOperario = "";
-
     private string estadoActual = "Fuera";
     private string? horaFichaje;
     private string? motivoSeleccionado;
     private bool mostrandoMotivosPausa = false;
     private bool mostrandoMotivosAusencia = false;
 
-    private void AgregarNumero(int numero) { if (pinIngresado.Length < 10) pinIngresado += numero.ToString(); }
+    private void AgregarNumero(int numero) { if (pinIngresado.Length < 6) pinIngresado += numero.ToString(); }
     private void BorrarNumero() { if (pinIngresado.Length > 0) pinIngresado = pinIngresado.Substring(0, pinIngresado.Length - 1); }
 
-    private void ValidarPin()
-    {
-        if (pinIngresado == "1234")
-        {
+    private void ValidarPin() {
+        if (pinIngresado == "1234") {
             estaAutenticado = true;
             nombreOperario = "Operario Test";
             pinIngresado = "";
-            estadoActual = "Fuera";
-            horaFichaje = null;
-            motivoSeleccionado = null;
-        }
-        else
-        {
+        } else {
             NotificationService.Notify(NotificationSeverity.Error, "Error", "PIN incorrecto");
             pinIngresado = "";
         }
     }
 
-    private void IniciarTrabajo()
-    {
+    private void IniciarTrabajo() {
         estadoActual = "Trabajando";
-        motivoSeleccionado = null;
         horaFichaje = DateTime.Now.ToString("HH:mm");
+        motivoSeleccionado = null;
     }
 
-
-    private void PedirMotivoPausa()
-    {
-        mostrandoMotivosPausa = true;
-    }
-
-    private void ConfirmarPausa(string motivo)
-    {
+    private void PedirMotivoPausa() => mostrandoMotivosPausa = true;
+    private void ConfirmarPausa(string motivo) {
         estadoActual = "Pausa";
         motivoSeleccionado = motivo;
         horaFichaje = DateTime.Now.ToString("HH:mm");
         mostrandoMotivosPausa = false;
     }
+    private void CancelarPausa() => mostrandoMotivosPausa = false;
 
-    private void CancelarPausa()
-    {
-        mostrandoMotivosPausa = false;
-    }
-
-    private void IniciarAusencia()
-    {
-        estadoActual = "Ausencia";
-        motivoSeleccionado = null;
-        horaFichaje = DateTime.Now.ToString("HH:mm");
-    }
-
-    private void FinalizarDia()
-    {
-        estadoActual = "Fuera";
-        Logout();
-    }
-
-    private void Logout()
-    {
-        estaAutenticado = false;
-        estadoActual = "Fuera";
-        mostrandoMotivosPausa = false;
-    }
-
-    public void ConfirmarAusencia(string motivo)
-    {
+    private void PedirMotivoAusencia() => mostrandoMotivosAusencia = true;
+    private void ConfirmarAusencia(string motivo) {
         estadoActual = "Ausencia";
         motivoSeleccionado = motivo;
         horaFichaje = DateTime.Now.ToString("HH:mm");
         mostrandoMotivosAusencia = false;
     }
+    private void CancelarAusencia() => mostrandoMotivosAusencia = false;
 
-    private void PedirMotivoAusencia()
-    {
-        mostrandoMotivosAusencia = true;
+    private void FinalizarDia() {
+        estadoActual = "Fuera";
+        Logout();
     }
 
-    public void CancelarAusencia()
-    {
-        mostrandoMotivosAusencia = false;
+    private void Logout() {
+        estaAutenticado = false;
+        pinIngresado = "";
     }
 }
