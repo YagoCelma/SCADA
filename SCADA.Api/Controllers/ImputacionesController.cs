@@ -320,7 +320,7 @@ namespace SCADA.Api.Controllers
             catch (DbUpdateException dbEx)
             {
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
-                Console.WriteLine($"--------------------------------- ERROR SQL: {msg}");
+                Console.WriteLine($" ERROR SQL: {msg}");
                 return BadRequest($"Error de base de datos: {msg}");
             }
             catch (Exception ex)
@@ -1045,6 +1045,26 @@ namespace SCADA.Api.Controllers
                 return Ok(true);
             }
             return Ok(false);
+        }
+
+        [HttpGet("empleado/{idEmpleado}/detalle-horas")]
+        public async Task<IActionResult> ObtenerDetalleHorasEmpleado(int idEmpleado)
+        {
+            try
+            {
+                var detalle = await _context.ImputacionesOperarios
+                    .Include(i => i.Operacion)
+                        .ThenInclude(op => op.Orden)
+                    .Where(i => i.IdEmpleado == idEmpleado)
+                    .OrderByDescending(i => i.FechaRegistro)
+                    .ToListAsync();
+
+                return Ok(detalle);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error al obtener el detalle: {ex.Message}");
+            }
         }
 
         public class CierreOperacionRequest

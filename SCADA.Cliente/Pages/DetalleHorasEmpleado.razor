@@ -1,0 +1,47 @@
+﻿@using SCADA.Modelos
+@using SCADA.Cliente.Services
+@inject SCADA.Cliente.Services.ImputacionService ImputacionService
+
+<RadzenStack class="rz-p-4">
+    @if (listaHoras == null)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else if (!listaHoras.Any())
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" ShowIcon="false">
+            Este empleado no tiene horas registradas todavía.
+        </RadzenAlert>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@listaHoras" TItem="ImputacionOperario" Density="Density.Compact">
+            <Columns>
+                <RadzenDataGridColumn TItem="ImputacionOperario" Property="Operacion.CodigoOperacion" Title="Operación" Width="150px" />
+                <RadzenDataGridColumn TItem="ImputacionOperario" Property="Operacion.Orden.CodigoOrden" Title="Orden" />
+                <RadzenDataGridColumn TItem="ImputacionOperario" Property="FechaRegistro" Title="Fecha" Width="120px">
+                    <Template Context="h">
+                        @h.FechaRegistro.ToString("dd/MM/yyyy")
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ImputacionOperario" Property="Horas" Title="Horas" Width="100px" TextAlign="TextAlign.Right">
+                    <Template Context="h">
+                        <span style="font-weight: bold; color: #1F4E79;">
+                            @h.Horas.ToString("N2") h
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public int IdEmpleado { get; set; }
+    private List<ImputacionOperario> listaHoras;
+
+    protected override async Task OnInitializedAsync()
+    {
+        listaHoras = await ImputacionService.ObtenerDetalleHorasEmpleadoAsync(IdEmpleado);
+    }
+}

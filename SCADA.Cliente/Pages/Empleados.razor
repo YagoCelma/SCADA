@@ -39,15 +39,40 @@
                             AllowPaging="true" PageSize="10" EditMode="DataGridEditMode.Single"
                             class="ent-datagrid">
                 <Columns>
-                    @* nombre *@
-                    <RadzenDataGridColumn TItem="Empleado" Property="Nombre" Title="NOMBRE">
+                    @* boton *@
+                    <RadzenDataGridColumn TItem="Empleado" Title="ACCIONES" Width="100px" TextAlign="TextAlign.Center">
                         <Template Context="e">
-                            <strong>@e.Nombre</strong>
+                            <RadzenButton Icon="visibility" 
+                                          ButtonStyle="ButtonStyle.Info" 
+                                          Variant="Variant.Flat" 
+                                          Size="ButtonSize.Small" 
+                                          Click="@(() => VerDetalleHoras(e))" 
+                                          ToolTip="Ver detalle de horas" />
                         </Template>
+                    </RadzenDataGridColumn>
+
+                    @* nombre *@
+                    <RadzenDataGridColumn TItem="Empleado" Property="Nombre" Title="EMPLEADO" Width="280px">
+                        <Template Context="e">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                <RadzenStack Gap="0">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" class="rz-mb-0">
+                                        <strong>@e.Nombre @e.Apellidos</strong>
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-base-500">
+                                        @e.CodigoEmpleado
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </Template>
+    
                         <EditTemplate Context="e">
-                            <RadzenTextBox @bind-Value="e.Nombre" Name="Nombre" class="ent-input w-100" Style="display: block;" />
-                            <RadzenRequiredValidator Component="Nombre" Text="El nombre no puede estar vacío"
-                                                     Popup="false" Style="position: absolute; color: #DC2626; font-size: 0.8rem; font-weight: bold;" />
+                            <RadzenStack Gap="0.5rem">
+                                <RadzenTextBox @bind-Value="e.Nombre" Name="Nombre" class="w-100" Placeholder="Nombre" />
+                                <RadzenRequiredValidator Component="Nombre" Text="Requerido" Popup="true" />
+            
+                                <RadzenTextBox @bind-Value="e.Apellidos" Name="Apellidos" class="w-100" Placeholder="Apellidos" />
+                            </RadzenStack>
                         </EditTemplate>
                     </RadzenDataGridColumn>
 
@@ -201,5 +226,25 @@
     private async Task AbrirGestionMaquinas(Empleado empleado)
     {
         Console.WriteLine($"Abriendo gestión de máquinas para: {empleado.Nombre}");
+    }
+
+    private async Task VerDetalleHoras(Empleado empleado)
+    {
+        var parameters = new Dictionary<string, object> 
+        { 
+            { "IdEmpleado", empleado.Id } 
+        };
+
+        await DialogService.OpenAsync<DetalleHorasEmpleado>(
+            $"Historial de Horas: {empleado.Nombre}",
+            parameters,
+            new DialogOptions 
+            { 
+                Width = "850px", 
+                Height = "600px",
+                Resizable = true,
+                Draggable = true,
+                CloseDialogOnOverlayClick = true 
+            });
     }
 }
